@@ -45,6 +45,8 @@ class Entity(pygame.sprite.Sprite):
         self.last_target        = None
         self.dot_damage         = 0
         self.expired_effects    = []
+        self.exp_dropped        = False
+        self.exp_reward         = 0
 
     # Called: Creature.__init__(), Player.__init__().
     def _load(self, filename, scale = SPRITE_SCALE):
@@ -117,7 +119,7 @@ class Entity(pygame.sprite.Sprite):
         for ability in self.abilities:
             ability.tick(dt)
 
-    # Called: Player.update(), Creature._attack(), Indie_Game._handle_events().
+    # Called: Player.update(), Player.attack(), Creature._attack(), Indie_Game._handle_events().
     def set_target_dist(self):
 
         self.target_dist = math.hypot(

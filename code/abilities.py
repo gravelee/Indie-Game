@@ -6,7 +6,7 @@ ABILITY_DATA = {
         "name": "Forward Slash",
         "damage_mult": 1.0,
         "cooldown": 2.0,
-        "range_": MELEE_ATTACK_RANGE,
+        "range_": 0,
         "mp_cost": 0,
         "rage_cost": 0,
         "energy_cost": 1,

@@ -2,7 +2,7 @@ import pygame
 import math
 
 from entity     import Entity
-from settings   import (FACING_CONE, ANIM_SPEED, GCD)
+from settings   import (TILE_SIZE, ANIM_SPEED, GCD)
 
 
 class Player(Entity):
@@ -56,6 +56,9 @@ class Player(Entity):
         "idle_attack", "idle_neutral", "pull", "push",
         "shield_stance", "walking", "sitting"
     ))
+    LOOPING_CANT_ATTACK_STATES = frozenset((
+        "pull", "push", "sitting"
+    ))
 
     # Direction names — used to build animation keys and snap facing.
     DIRECTIONS = ("south", "north", "east", "west")
@@ -95,61 +98,33 @@ class Player(Entity):
             self.animations[name] = self._load(f"{self._SUBBASE + name}.png")
 
 
-    # Called: attack()
-    def _target_in_cone(self):
+    # Called: _targets_in_zone()
+    def _get_attack_zone(self):
+        # Returns list of (rect_x, rect_y) world tile centers in the attack zone.
+        r = self.rect.centerx // TILE_SIZE
+        c = self.rect.centery // TILE_SIZE
+        ts = TILE_SIZE
 
-        if self.target.state == "dying" or not self.target.is_alive:
-            return False
-
-        dx   = self.target.rect.centerx - self.rect.centerx
-        dy   = self.target.rect.centery - self.rect.centery
-        dist = math.hypot(dx, dy)
-
-        if not any(a.range_ >= dist for a in self.abilities):
-            return False
-
-        angle_to = math.degrees(math.atan2(dy, dx))
-        diff     = (angle_to - self.facing_angle + 180) % 360 - 180
-
-        return abs(diff) <= FACING_CONE / 2
-
-    # Called: attack()
-    def _auto_target(self):
-
-        target    = None
-        best_dist = float("inf")
-
-        # Cone origin — edge of sprite in facing direction.
-        if self.facing == "east":
-            origin_x = self.rect.right
+        if self.facing == "south":
+            tiles = [(r-1, c+1), (r, c+1), (r+1, c+1), (r, c+2)]
+        elif self.facing == "north":
+            tiles = [(r-1, c-1), (r, c-1), (r+1, c-1), (r, c-2)]
+        elif self.facing == "east":
+            tiles = [(r+1, c-1), (r+1, c), (r+1, c+1), (r+2, c)]
         elif self.facing == "west":
-            origin_x = self.rect.left
-        else:
-            origin_x = self.rect.centerx  # south/north — center
+            tiles = [(r-1, c-1), (r-1, c), (r-1, c+1), (r-2, c)]
 
-        origin_y = self.rect.centery
+        return [pygame.Rect(tx * ts, ty * ts, ts, ts) for tx, ty in tiles]
 
-        for enemy in self.enemies:
-
-            if enemy.state == "dying":
-                continue
-
-            dx   = enemy.rect.centerx - origin_x
-            dy   = enemy.rect.centery - origin_y
-            dist = math.hypot(dx, dy)
-
-            if not any(a.range_ >= dist for a in self.abilities):
-                continue
-
-            angle_to = math.degrees(math.atan2(dy, dx))
-            diff     = (angle_to - self.facing_angle + 180) % 360 - 180
-
-            if abs(diff) <= FACING_CONE / 2:
-                if dist < best_dist:
-                    best_dist = dist
-                    target    = enemy
-
-        return target, best_dist
+    # Called: attack()
+    def _targets_in_zone(self):
+        # Returns all enemies whose hitbox overlaps the attack zone.
+        zone = self._get_attack_zone()
+        return [
+            e for e in self.enemies
+            if e.state not in ("dead", "dying")
+            and any(e.hitbox.colliderect(tile) for tile in zone)
+        ]
 
     # Called: _handle_movement()
     def _update_facing(self, dx, dy):
@@ -183,27 +158,17 @@ class Player(Entity):
     # Called: Indie_Game._handle_events()
     def attack(self):
 
-        # Cannot attack during one-shot animations.
-        if self.state in self.ONE_SHOT_STATES:
-            return False
-
-        # If no target, try to find one target within the range of atleast on of your abilities.
-        # Enemy should be spoted within a cone in font of you.
-        if self.target is None:
-            self.target, self.target_dist = self._auto_target()
-            # If none is found it return (stops attack).
-            if self.target is None:
-                return False
-        # If you have a target then check if he is in the cone in front of you. If not returns.
-        elif not self._target_in_cone():
+        # Cannot attack during one-shot or looping-no-attack animations.
+        if self.state in self.ONE_SHOT_STATES or self.state in self.LOOPING_CANT_ATTACK_STATES:
             return False
 
         # Global cooldown check.
         if self.gcd_timer > 0:
             return False
 
+        # Can attack even with no targets — play animation anyway.
         # Get the list of all the abilities that can be triggered (no cooldown) and are in range and costs exist.
-        choices = self._ready_abilities(self.target_dist)
+        choices = self._ready_abilities(0.0)
         # If the list is empty returns False.
         if choices is None:
             return False
@@ -211,21 +176,29 @@ class Player(Entity):
         # You choose an ability (from the list before) based on max damage output.
         ability = self._pick_ability(choices)
 
-        # This is the footprint the outcome of the ability being used.
-        result = ability.use(
-            self.stats,
-            self.target.stats,
-            self.target.effects,
-            self.target_dist
-        )
+        # Get all targets in zone.
+        targets = self._targets_in_zone()
+
+        # This is the footprint the outcome of the ability being used on all targets within an area.
+        results = ability.use(self.stats, targets, 0.0)
 
         # Wake up target creature if in one of its non combat states.
-        if self.target.state in self.target.NON_COMBAT_STATES:
-            self.target._set_state("enter_stance")
+        for t in targets:
+            if t.state in t.NON_COMBAT_STATES:
+                t._set_state("enter_stance")
+
+        # Store results for combat feedback.
+        # last_hit is the full list of result dicts; last_target is the list of targets hit.
+        self.last_hit = results
+        self.last_target = targets if targets else None
+
+        # Auto-focus the closest hit target if player has no target set.
+        if targets and self.target is None:
+            self.target = min(targets,
+                    key=lambda t: math.hypot(t.rect.centerx - self.rect.centerx, t.rect.centery - self.rect.centery))
+            self.set_target_dist()
 
         self.gcd_timer   = GCD
-        self.last_hit    = result
-        self.last_target = self.target
 
         # Sets the state to the specific ability used.
         self._set_state(ability.anim)

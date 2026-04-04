@@ -9,28 +9,29 @@ class CombatFeedback():
 
     # Called: Indie_Game._update()
     def process_player(self, player):
-        """
-        Read player's last attack result and DoT/effect data
-        and spawn appropriate UI feedback.
-        """
 
         # ── attack result — damage numbers on target ──────────
         if player.last_hit and player.last_target:
-            r = player.last_hit
-            t = player.last_target
-            self.ui.spawn_from_result(
-                r, t.rect.centerx,
-                t.rect.top - 20,
-                is_magic = r.get("is_magic", False)
-            )
 
-            if r.get("effect"):
-                self.ui._spawn_text(
-                    f"{r["effect"].split("_")[-1].capitalize()}",
-                    t.rect.centerx,
-                    t.rect.top - 35,
-                    COLOR_EFFECT_TEXT
+            targets = player.last_target if isinstance(player.last_target, list) else [player.last_target]
+            results = player.last_hit if isinstance(player.last_hit, list) else [player.last_hit]
+
+            # Pair each result with its target (zip stops at the shorter one).
+            for r, t in zip(results, targets):
+
+                self.ui.spawn_from_result(
+                    r, t.rect.centerx,
+                    t.rect.top - 20,
+                    is_magic = r.get("is_magic", False)
                 )
+
+                if r.get("effect"):
+                    self.ui._spawn_text(
+                        f"{r["effect"].split("_")[-1].capitalize()}",
+                        t.rect.centerx,
+                        t.rect.top - 35,
+                        COLOR_EFFECT_TEXT
+                    )
 
             player.last_hit    = None
             player.last_target = None
@@ -55,6 +56,7 @@ class CombatFeedback():
     # Called: Indie_Game._update()
     def process_entities(self, entities):
 
+        # We give all active creatures here and interpret everyone.
         for entity in entities:
 
             # ── creature attack result — damage on player ─────
@@ -79,9 +81,9 @@ class CombatFeedback():
                 entity.last_hit = None
 
             # ── EXP drop on death ─────────────────────────────
-            if (entity.state =="dying") and not entity.exp_dropped and entity.exp_reward > 0:
+            if (entity.state =="dying") and not entity.exp_dropped and entity.stats.exp_reward > 0:
                 self.ui.spawn_exp(
-                    entity.exp_reward,
+                    entity.stats.exp_reward,
                     entity.rect.centerx,
                     entity.rect.top - 20
                 )

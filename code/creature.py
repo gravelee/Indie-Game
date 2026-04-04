@@ -31,7 +31,6 @@ class Creature(Entity):
         self.notice_cooldown        = NOTICE_COOLDOWN
         self.obstacles              = []
         self.facing_right           = False
-        self.exp_dropped            = False
 
         # Wander attr
         self.wander_timer           = random.uniform(0, 1.0)
@@ -508,8 +507,7 @@ class Creature(Entity):
         # This is the footprint the outcome of the ability being used.
         result = ability.use(
             self.stats,
-            self.target.stats,
-            self.target.effects,
+            [self.target],
             self.target_dist
         )
 
@@ -519,7 +517,7 @@ class Creature(Entity):
             self.target.set_target_dist()
 
         self.gcd_timer      = GCD
-        self.last_hit       = result
+        self.last_hit       = result[0] if result else None
 
         # If creature runs out of energy.
         if self.stats.energy < 1:

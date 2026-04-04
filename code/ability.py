@@ -42,66 +42,92 @@ class Ability:
         )
 
     # Called: Creature._attack(), Player.attack().
-    def use(self, user_stats, target_stats, target_effects, dist):
+    def use(self, user_stats, targets, dist):
 
-        result = {
-            "damage"   : 0,
-            "crit"     : False,
-            "effect"   : None,
-            "hit_type" : "normal",  # "normal", "dodge", "block", "resist" "miss"
-            "is_magic": self.is_magic
-        }
-
+        # If out of range.
         if not self.can_use(user_stats, dist):
-            return result
+            return None
 
+        # User pays the costs.
         user_stats.mp       -= self.mp_cost
         user_stats.rage     -= self.rage_cost
         user_stats.energy   -= self.energy_cost
 
-        if self.is_magic and roll(target_stats.resist):
-            result["hit_type"] = "resist"
-            self._timer = self.cooldown
-            return result
+        results = []
 
-        if roll(target_stats.dodge):
-            result["hit_type"] = "dodge"
-            self._timer = self.cooldown
-            return result
+        # For every target in zone.
+        for t in targets:
 
-        if not self.is_magic and roll(target_stats.block):
-            result["hit_type"] = "block"
-            self._timer = self.cooldown
-            return result
+            result = {
+                "damage"   : 0,
+                "crit"     : False,
+                "effect"   : None,
+                "hit_type" : "normal",  # "normal", "dodge", "block", "resist" "miss"
+                "is_magic": self.is_magic
+            }
 
-        base      = user_stats.matk if self.is_magic else user_stats.patk
-        raw       = base * self.damage_mult
+            # If attack is resisted.
+            if self.is_magic and roll(t.stats.resist):
+                result["hit_type"] = "resist"
+                results.append(result)
+                continue
 
-        crit_stat = user_stats.mcrit if self.is_magic else user_stats.crit
-        if roll(crit_stat):
-            raw          *= 2.0
-            result["crit"] = True
-            user_stats.rage = min(user_stats.rage_max, user_stats.rage + 2.0)
-        else:
-            user_stats.rage = min(user_stats.rage_max, user_stats.rage + 1.0)
+            # If attack dodged.
+            if roll(t.stats.dodge):
+                result["hit_type"] = "dodge"
+                results.append(result)
+                continue
 
-        actual           = target_stats.take_damage(raw, self.is_magic, is_crit = result["crit"])
-        result["damage"] = actual
+            # If attack blocked.
+            if not self.is_magic and roll(t.stats.block):
+                result["hit_type"] = "block"
+                results.append(result)
+                continue
 
-        target_stats.rage = min(target_stats.rage_max, target_stats.rage + 1.0)
+            # Calculates the raw damage.
+            base      = user_stats.matk if self.is_magic else user_stats.patk
+            raw       = base * self.damage_mult
 
-        if self.effect_name and self.effect_chance > 0:
-            if roll(self.effect_chance):
-                if not self.is_magic or not roll(target_stats.res):
-                    target_effects.apply(
-                        self.effect_name,
-                        target_stats,
-                        source = user_stats
-                    )
-                    result["effect"] = self.effect_name
+            # Check for critical damage.
+            crit_stat = user_stats.mcrit if self.is_magic else user_stats.crit
+            if roll(crit_stat):
+
+                # Updates damage (x2).
+                raw          *= 2.0
+                result["crit"] = True
+
+                # Update users rage.
+                user_stats.rage = min(user_stats.rage_max, user_stats.rage + 2.0)
+            else:
+                user_stats.rage = min(user_stats.rage_max, user_stats.rage + 1.0)
+
+            # Update damage based of targets defences.
+            actual           = t.stats.take_damage(raw, self.is_magic, is_crit = result["crit"])
+            result["damage"] = actual
+
+            # Update targets rage.
+            t.stats.rage = min(t.stats.rage_max, t.stats.rage + 1.0)
+
+            # Calculate effects if exists.
+            if self.effect_name and self.effect_chance > 0:
+
+                # If attack succeed in effect roll.
+                if roll(self.effect_chance):
+
+                    # If ability not magical apply the effect immediatelly.
+                    # If magical roll resist chance.
+                    if not self.is_magic or not roll(t.stats.res):
+                        t.effects.apply(
+                            self.effect_name,
+                            t.stats,
+                            source = user_stats
+                        )
+                        result["effect"] = self.effect_name
+
+            results.append(result)
 
         self._timer = self.cooldown
-        return result
+        return results
 
 
     # Called: can_use().

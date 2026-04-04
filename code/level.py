@@ -128,4 +128,4 @@ class Level:
     @property
     def active_creatures(self):
 
-        return [c for c in self.creature_list if c.state != "dying" and c.state != "dead"]
+        return [c for c in self.creature_list if c.state != "dead"]
