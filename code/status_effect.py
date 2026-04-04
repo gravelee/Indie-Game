@@ -7,6 +7,7 @@ def roll(chance):
 
 class Effect:
 
+    # Called: EffectManager.apply().
     def __init__(self, status_data, source = None):
 
         self.name       = status_data["name"]
@@ -91,6 +92,7 @@ class Effect:
 
 class EffectManager:
 
+    # Called: EffectManager.apply().
     def __init__(self):
 
         self._active = []

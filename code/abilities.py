@@ -2,6 +2,23 @@ from settings import MELEE_ATTACK_RANGE
 
 ABILITY_DATA = {
 
+    "player_slash": {
+        "name": "Forward Slash",
+        "damage_mult": 1.0,
+        "cooldown": 2.0,
+        "range_": MELEE_ATTACK_RANGE,
+        "mp_cost": 0,
+        "rage_cost": 0,
+        "energy_cost": 1,
+        "effect_name": None,
+        "effect_chance": 0.0,
+        "anim": "forward_slash",
+        "is_magic": False,
+        "description": "Physical attack damage x1.0, 2.0 sec cooldown, melee range, costs 1 energy, no effect, physical ability. Scales for damage +0.5 and cooldown -0.5 sec.",
+        "scale": ["damage_mult", "cooldown"],
+        "scale_value": [0.5, 0.5]
+    },
+
     "rat_bite": {
         "name": "Bite",
         "damage_mult": 1.0,

@@ -8,7 +8,7 @@ from settings       import (
 
 class Entity(pygame.sprite.Sprite):
 
-    _BASE               = "../assets/sprites/creatures/"
+    _BASE               = "../assets/sprites/"
     _ANIM_FILES         = {}
 
     # Called: Creature.__init__(), Player.__init__().
@@ -31,7 +31,6 @@ class Entity(pygame.sprite.Sprite):
         self.target         = None
         self.target_dist    = 0.0
         self.in_combat      = False
-        self.facing_right   = False
         self.corpse_alpha   = 255
 
         #   Animation, cooldown
@@ -87,8 +86,8 @@ class Entity(pygame.sprite.Sprite):
     # Called: Creature.update(), Player.update().
     def _regen(self, dt):
 
-        # If entities state is dying skip regen.
-        if self.state != "dying":
+        # If entities state is death or dying skip regen.
+        if self.state not in {"death", "dying"}:
 
             # If creatures life is zero and state not dying and not dead.
             if (not self.is_alive):

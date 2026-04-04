@@ -140,7 +140,7 @@ class Indie_Game():
         self.ui.draw(self.screen, self.camera.offset, self.level.active_creatures)
         # Also draw the player bars.
         self.hud.draw(self.level.player)
-        self._draw_paths()
+        #self._draw_paths()
         # Draw the panels if openned.
         self.panel_player.draw()
         self.panel_creature.draw()

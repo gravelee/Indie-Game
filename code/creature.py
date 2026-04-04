@@ -7,6 +7,8 @@ from settings       import (ANIM_SPEED, TILE_SIZE, NOTICE_COOLDOWN, GCD, SPRITE_
 
 class Creature(Entity):
 
+    _SUBBASE = "creatures/"
+
     ATTACKS             = frozenset()
     ABILITY_STATES      = frozenset()
     COMBAT_STATES       = frozenset()
@@ -28,6 +30,8 @@ class Creature(Entity):
         self.out_of_energy          = False
         self.notice_cooldown        = NOTICE_COOLDOWN
         self.obstacles              = []
+        self.facing_right           = False
+        self.exp_dropped            = False
 
         # Wander attr
         self.wander_timer           = random.uniform(0, 1.0)
@@ -57,7 +61,7 @@ class Creature(Entity):
         self.los_lock_interval      = random.uniform(1.8, 2.2)  # stagger LOS too
 
         # Sprite / hitbox attr
-        self.animations             = {k: self._load(self._SUBBASE + v) for k, v in self._ANIM_FILES.items()}
+        self.animations             = {k: self._load(self._SUBBASE + self._SUBBASE2 + v) for k, v in self._ANIM_FILES.items()}
         self.image                  = self.animations["idle_neutral"][0]
         self.rect                   = self.image.get_rect(topleft = (x, y))
         self.hitbox                 = self.rect.inflate(-50, -50)

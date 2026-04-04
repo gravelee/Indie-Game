@@ -3,7 +3,7 @@ from settings   import (NOTICE_COOLDOWN, HOME_MAX_DIST, NOTICE_DIRECTION, NOTICE
 
 class Rat(Creature):
 
-    _SUBBASE = "rat/"
+    _SUBBASE2 = "rat/"
     _ANIM_FILES = {
         "idle_neutral" : "idle_neutral.png",
         "wander"       : "move.png",
