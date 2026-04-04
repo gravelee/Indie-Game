@@ -1,7 +1,7 @@
 import csv
 import json
-import math
-from settings import TILE_SIZE, OBSTACLE_SIZE_MAX
+import pygame
+from settings import TILE_SIZE, SPRITE_SCALE
 
 class TileMap:
 
@@ -29,14 +29,8 @@ class TileMap:
         self.width  = self.rows * TILE_SIZE
         self.height = self.cols * TILE_SIZE
 
-        # Inflating the original grid with neighbor obstacle tiles based of their respective sizes.
-        self.occupied_grid_1 = [[False] * self.cols for _ in range(self.rows)]
-        # Inflating the occupied_grid_1 with neighbor obstacle/occupied tiles based on the creatures size (3x3 tiles of 32x32 tile size).
-        self.occupied_grid_2 = [[False] * self.cols for _ in range(self.rows)]
-        # Inflating the occupied_grid_2 with neighbor obstacle/occupied tiles based on the creatures size (5x5 tiles of 32x32 tile size).
-        self.occupied_grid_3 = [[False] * self.cols for _ in range(self.rows)]
-
-        self.obstacles = None
+        self.obstacles      = None
+        self.hitbox_blocked = None
 
     # Called: Level._spawn_entities()
     def get(self, row, col):
@@ -71,174 +65,64 @@ class TileMap:
                 return r
         return None
 
-    # Called: construct_grid(), update_grid(),
-    #   Pathfinder._nearest_walkable(), Pathfinder._to_world_safe(),
-    #   Pathfinder._reconstruct(), Pathfinder._neighbors(),
-    #   Pathfinder.find_path(), Pathfinder.has_line_of_sight().
-    def is_walkable(self, grid_update, row, col):
-        # Returns if the specific position is walkable always from the apropriate grid.
-        if grid_update == -1:
-            return self.original_grid[row][col] != 3
-        if grid_update == 0:
-            return not self.occupied_grid_1[row][col]
-        if grid_update == 1:
-            return not self.occupied_grid_2[row][col]
-        if grid_update == 2:
-            return not self.occupied_grid_3[row][col]
+    # Called: Pathfinder._nearest_walkable(), Pathfinder._neighbors(),
+    #   Pathfinder.find_path(), Pathfinder.move_to_target(), Pathfinder.line_of_sight()
+    def is_walkable(self, row, col):
 
-    # Called: update_tilemap()
-    def construct_grid(self, grid_update, world_x = 0, world_y = 0):
+        # Returns if the specific position is walkable always from the grid.
+        return self.original_grid[row][col] != 3
 
-        # Here we construct the occupied 1, 2 and 3 grids for the first time.
-        # Also we reconstruct occupied_grid_2 and 3 (world_ coordinates != 0) if there is a change in occupied_grid_1.
+    # Called: update_tilemap(), Level._spawn_entities()
+    def build_hitbox_grid(self, obstacles, hitbox_inflate=-50):
 
-        # It recalculates some of the cleared map tile occupation status because there was a change in the map.
-        row     = world_x // TILE_SIZE
-        col     = world_y // TILE_SIZE
+        # Precompute which tiles a creature cannot stand on due to obstacle hitboxes
+        sprite_size = TILE_SIZE * SPRITE_SCALE
+        hitbox_size = sprite_size + hitbox_inflate
 
-        # Ranges are calculated based on if we got world_x and y. Also clamps the coordinates to be safe.
-        range_x = range(0, self.rows) if world_x == 0 else range(max(0, row - grid_update), min(self.rows, row + grid_update + 1))
-        range_y = range(0, self.cols) if world_y == 0 else range(max(0, col - grid_update), min(self.cols, col + grid_update + 1))
+        self.hitbox_blocked = [[False] * self.cols for _ in range(self.rows)]
 
-        # Do that only for reconstructure
-        if world_x != 0 and world_y != 0:
-            # For all the grids size.
-            for r in range_x:
-                for c in range_y:
-                    # Init grids.
-                    if grid_update == 2:
-                        self.occupied_grid_2[r][c] = False
-                    elif grid_update == 3:
-                        self.occupied_grid_3[r][c] = False
+        for r in range(self.rows):
+            for c in range(self.cols):
+                world_x = r * TILE_SIZE + TILE_SIZE // 2
+                world_y = c * TILE_SIZE + TILE_SIZE // 2
+                creature_hitbox = pygame.Rect(0, 0, hitbox_size, hitbox_size)
+                creature_hitbox.center = (world_x, world_y)
+                if any(creature_hitbox.colliderect(obs.hitbox) for obs in obstacles):
+                    self.hitbox_blocked[r][c] = True
 
-        # For all the original_grid size.
-        for r in range_x:
-            for c in range_y:
+    # Called: Bush.take_hit()
+    def update_tilemap(self, world_x, world_y):
 
-                # If tile is not walkable from the "grid".
-                if not self.is_walkable(grid_update - 2, r, c):
-
-                    # For all tiles within unwalkable tile range 1.
-                    for dr in range(-1, 2):
-                        for dc in range(-1, 2):
-
-                            nr, nc = r + dr, c + dc
-
-                            # If tile falls out of the map (or check area) continue.
-                            if not (nr in range_x and nc in range_y):
-                                continue
-
-                            # Check what grid you update.
-                            if grid_update == 1:
-                                self.occupied_grid_1[nr][nc] = True
-                            elif grid_update == 2:
-                                self.occupied_grid_2[nr][nc] = True
-                            elif grid_update == 3:
-                                self.occupied_grid_3[nr][nc] = True
-
-    # Called: update_tilemap()
-    def update_grid(self, footprint, world_x, world_y):
-
-        # Here we update original and occupied_1 grids if there is a change in the obstacle list.
-
-        # It recalculates some of the cleared map tile occupation status because there was a change in the map.
+        # Mark destroyed obstacle tile as walkable in original_grid.
         row = world_x // TILE_SIZE
         col = world_y // TILE_SIZE
-
-        # Mark the tile itself as walkable in grid
         self.original_grid[row][col] = 0
 
-        # For each tile in the footprint zone around the removed obstacle.
-        # Check walkability from original_grid to update occupied_grid_1.
-        for rr in range(-footprint, footprint + 1):
-            for rc in range(-footprint, footprint + 1):
+        # Rebuild hitbox grid to reflect the removed obstacle.
+        if self.obstacles is not None:
+            self.build_hitbox_grid(self.obstacles, hitbox_inflate=-50)
 
-                # Neighbor coordinates.
-                nr, nc = row + rr, col + rc
 
-                # If tile falls out of the map continue.
-                if not (0 <= nr < self.rows and 0 <= nc < self.cols):
-                    continue
-
-                # Check if this tile is still within max footprint size of any remaining obstacle.
-                still_blocked = False
-                for er in range(-OBSTACLE_SIZE_MAX, OBSTACLE_SIZE_MAX + 1):
-                    for ec in range(-OBSTACLE_SIZE_MAX, OBSTACLE_SIZE_MAX + 1):
-
-                        # Check obstacle coordinates.
-                        cr, cc = nr + er, nc + ec
-
-                        # If tile falls out of the map continue.
-                        if not (0 <= cr < self.rows and 0 <= cc < self.cols):
-                            continue
-
-                        # Checks if the tile is originally occupied (from original_grid).
-                        if not self.is_walkable(-1, cr, cc):
-
-                            # Differencial coordinates.
-                            dr, dc = cr - nr, cc - nc
-
-                            # Check for all obstacles.
-                            for obs in self.obstacles:
-
-                                # If obstacle coordinates same as check obstacle coordinates.
-                                if obs.rect.centerx // TILE_SIZE == cr and obs.rect.centery // TILE_SIZE == cc:
-
-                                    # Check if obstacle footprint radius overlaps specific tile.
-                                    if obs.tile_radius >= math.hypot(dr, dc):
-
-                                        still_blocked = True
-                                        break
-
-                    if still_blocked:
-                        break
-
-                # Update all other grids.
-                if not still_blocked:
-                    self.occupied_grid_1[nr][nc] = False
-
-    # Called: Level._spawn_entities(), Bush.take_hit()
-    def update_tilemap(self, footprint, world_x = 0, world_y = 0):
-
-        # Here we update the tilemap based on the parameters that are given (world_x, y).
-        # Usually this is happening when an obstacle is destroyed.
-
-        if world_x != 0 and world_y != 0:
-            # Updates general and occuplied grids after change.
-            self.update_grid(footprint, world_x, world_y)
-            # Updates occupied_grid_2 grid too.
-            self.construct_grid(2, world_x, world_y)
-            # Updates occupied_grid_3 grid too.
-            self.construct_grid(3, world_x, world_y)
-        else:
-            self.construct_grid(footprint, world_x, world_y)
-
-    # Called: None
+    # Called: Level.__init__()
     def print_grids(self, path="../data/levels/grids_debug.txt"):
-        grids = {
-            "ORIGINAL":   self.original_grid,
-            "OCCUPIED_1": self.occupied_grid_1,
-            "OCCUPIED_2": self.occupied_grid_2,
-            "OCCUPIED_3": self.occupied_grid_3,
-        }
+
         with open(path, "w") as f:
-            for name, grid in grids.items():
-                f.write(f"=== {name} ===\n")
-                # outer loop = y (vertical, cols axis after transpose)
-                # inner loop = x (horizontal, rows axis after transpose)
-                for c in range(self.cols):
-                    line = ""
-                    for r in range(self.rows):
-                        og = self.original_grid[r][c]
-                        if og == 1:     line += "P"
-                        elif og == 2:   line += "C"
-                        elif og == 3:   line += "X"
-                        elif og == 100: line += "#"
-                        elif name == "ORIGINAL":
-                            line += " "
-                        elif grid[r][c]:
-                            line += "."  # blocked
-                        else:
-                            line += " "  # walkable
-                    f.write(line + "\n")
-                f.write("\n")
+            f.write("=== ORIGINAL ===\n")
+            # outer loop = y (vertical, cols axis after transpose)
+            # inner loop = x (horizontal, rows axis after transpose)
+            for c in range(self.cols):
+                line = ""
+                for r in range(self.rows):
+                    og = self.original_grid[r][c]
+                    if og == 1:
+                        line += "P"
+                    elif og == 2:
+                        line += "C"
+                    elif og == 3:
+                        line += "X"
+                    elif og == 100:
+                        line += "#"
+                    else:
+                        line += " "  # walkable
+                f.write(line + "\n")
+            f.write("\n")

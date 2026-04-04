@@ -57,7 +57,7 @@ class Stats:
 
         self.upgrade_history = []
 
-    #   Called: _recalculate_all()
+    #   Called: _recalculate_all(), Entity.__init__().
     def _calc_level(self):
 
         weighted = (
@@ -121,7 +121,6 @@ class Stats:
 
         return self.spr * 0.1
 
-
     # Called: _recalculate_all()
     def _calc_dodge(self):
 
@@ -144,7 +143,8 @@ class Stats:
 
         return self.bms + (self.agi * 0.5)
 
-    # Called: init()
+
+    # Called: __init__(), recalculate()
     def _recalculate_all(self):
 
         self.level      = self._calc_level()
@@ -165,7 +165,7 @@ class Stats:
         self.resist     = self._calc_resist()
         self.mspd       = self._calc_mspd()
 
-    # Called: update_stat()
+    # Called: upgrade_stat()
     def recalculate(self):
 
         old_energy  = self.energy
@@ -179,37 +179,6 @@ class Stats:
         self.hp     = old_hp
         self.rage   = old_rage
         self.mp     = old_mp
-
-    # Called: restore_resource()
-    def recalculate_max(self):
-
-        if self.energy > self.energy_max:
-            self.energy = self.energy_max
-
-        if self.hp > self.hp_max:
-            self.hp = self.hp_max
-
-        if self.rage > self.rage_max:
-            self.rage = self.rage_max
-
-        if self.mp > self.mp_max:
-            self.mp = self.mp_max
-
-    # Called: None
-    def restore_resource(self, resource_name, amount):
-
-        acceptable_resources = ["energy","hp","rage","mp"]
-        resource = getattr(self, resource_name)
-
-        if resource_name not in acceptable_resources:
-            return False
-
-        if amount <= 0:
-            return False
-
-        setattr(self, resource_name, resource + amount)
-        self.recalculate_max()
-        return True
 
     # Called: upgrade_stat()
     def spend_resource(self, resource_name, amount):
@@ -226,21 +195,21 @@ class Stats:
         setattr(self, resource_name, resource - amount)
         return True
 
-    # Called: Creature._begin_death()
-    def gain_exp(self, amount):
+    # Called: restore_resource()
+    def recalculate_max(self):
 
-        self.exp          += amount
-        self.lifetime_exp += amount
+        if self.energy > self.energy_max:
+            self.energy = self.energy_max
 
-    # Called: Ability.use()
-    def take_damage(self, raw_damage, is_magic = False, is_crit = False):
+        if self.hp > self.hp_max:
+            self.hp = self.hp_max
 
-        defense = self.mdef if is_magic else self.pdef
-        actual    = max(2 if is_crit else 1, raw_damage - defense)
-        actual = math.floor(actual + 0.4999)
-        self.hp = max(0, self.hp - actual)
+        if self.rage > self.rage_max:
+            self.rage = self.rage_max
 
-        return actual
+        if self.mp > self.mp_max:
+            self.mp = self.mp_max
+
 
     # Called: None
     def upgrade_stat(self, stat_name, exp_cost = None):
@@ -268,37 +237,76 @@ class Stats:
         return True
 
     # Called: None
+    def restore_resource(self, resource_name, amount):
+
+        acceptable_resources = ["energy","hp","rage","mp"]
+        resource = getattr(self, resource_name)
+
+        if resource_name not in acceptable_resources:
+            return False
+
+        if amount <= 0:
+            return False
+
+        setattr(self, resource_name, resource + amount)
+        self.recalculate_max()
+        return True
+
+    # Called: Creature._begin_death(), (Level._spawn_entities() DEBUG)
+    def gain_exp(self, amount):
+
+        self.exp          += amount
+        self.lifetime_exp += amount
+
+    # Called: Ability.use()
+    def take_damage(self, raw_damage, is_magic = False, is_crit = False):
+
+        defense = self.mdef if is_magic else self.pdef
+        actual    = max(2 if is_crit else 1, raw_damage - defense)
+        actual = math.floor(actual + 0.4999)
+        self.hp = max(0, self.hp - actual)
+
+        return actual
+
+    # Called: None
     def available_upgrades(self):
 
         valid = ('str_', 'agi', 'sta', 'int_', 'spr', 'res', 'def_')
         blocked = self.upgrade_history[-2:]
         return [s for s in valid if s not in blocked]
 
+
+    # Called: Entity._regen(), Entity.is_alive
     @property
     def is_alive(self):
 
         return self.hp > 0
 
+    # Called: None.
     @property
     def energy_pct(self):
 
         return self.energy / self.energy_max
 
+    # Called: None.
     @property
     def hp_pct(self):
 
         return self.hp / self.hp_max
 
+    # Called: None.
     @property
     def rage_pct(self):
 
         return self.rage / self.rage_max
 
+    # Called: None.
     @property
     def mp_pct(self):
 
         return self.mp / self.mp_max if self.mp_max > 0 else 0.0
 
+    # Called: rank_grade(), rank_title().
     @property
     def rank(self):
 
@@ -308,16 +316,19 @@ class Stats:
                 result = (grade, title)
         return result
 
+    # Called: StatPanel._build_lines(), HUD.draw().
     @property
     def rank_grade(self):
 
         return self.rank[0]
 
+    # Called: StatPanel._build_lines(), HUD.draw().
     @property
     def rank_title(self):
 
         return self.rank[1]
 
+    # Called: CombatFeedback.process_entities().
     @property
     def exp_reward(self):
 

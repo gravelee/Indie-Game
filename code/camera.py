@@ -2,6 +2,7 @@ import pygame
 
 class YSortCameraGroup(pygame.sprite.Group):
 
+    # Called: Indie_Game.__init__().
     def __init__(self, screen, tile_size, map_w, map_h):
         super().__init__()
 
@@ -14,17 +15,7 @@ class YSortCameraGroup(pygame.sprite.Group):
         self.offset    = pygame.math.Vector2(0, 0)
 
 
-    @property
-    def half_w(self):
-
-        return self.screen.get_width() // 2
-
-    @property
-    def half_h(self):
-
-        return self.screen.get_height() // 2
-
-
+    # Called: custom_draw()
     def update_camera(self, player):
 
         self.offset.x = player.rect.centerx - self.half_w
@@ -33,7 +24,7 @@ class YSortCameraGroup(pygame.sprite.Group):
         self.offset.x = max(0, min(self.offset.x, self.map_w - self.screen.get_width()))
         self.offset.y = max(0, min(self.offset.y, self.map_h - self.screen.get_height()))
 
-
+    # Called: Indie_Game._draw()
     def custom_draw(self, player):
 
         self.update_camera(player)
@@ -55,3 +46,16 @@ class YSortCameraGroup(pygame.sprite.Group):
                 sprite.rect.x - int(self.offset.x),
                 sprite.rect.y - int(self.offset.y)
             ))
+
+
+    # Called: YSortCameraGroup.update_camera().
+    @property
+    def half_w(self):
+
+        return self.screen.get_width() // 2
+
+    # Called: YSortCameraGroup.update_camera().
+    @property
+    def half_h(self):
+
+        return self.screen.get_height() // 2

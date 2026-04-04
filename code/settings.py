@@ -33,7 +33,7 @@ HOME_MAX_DIST       = 2000
 NOTICE_DIRECTION    = 450
 NOTICE_DIST         = 400
 CHASE_DIST          = 900
-ATTACK_DIST         = 80
+ATTACK_DIST         = 60
 HOME_DIST           = 12
 FLEE_SPEED          = 200.0
 BASE_MOVEMENT_SPEED = 100
@@ -48,7 +48,7 @@ PLAYER_MOVEMENT_SPEED = 120
 GCD         = 1.0           # global cooldown in seconds
 
 # ── Ability ranges ─────────────────────────────────────────────
-MELEE_ATTACK_RANGE  = 80   # close combat
+MELEE_ATTACK_RANGE  = 60   # close combat
 RANGED_SHORT        = 300   # short range (daggers, short bow)
 RANGED_MEDIUM       = 600   # medium range (bow)
 RANGED_LARGE        = 1000  # long range (sniper, magic bolt)

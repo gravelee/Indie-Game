@@ -117,6 +117,20 @@ class Indie_Game():
         self.feedback.process_player(self.level.player)
         self.feedback.process_entities(self.level.active_creatures)
 
+    # Called: _draw()
+    def _draw_paths(self):
+        for creature in self.level.creature_list:
+            if not creature.path:
+                continue
+            # Draw A* waypoints (red).
+            for wx, wy in creature.path:
+                # convert world to screen
+                sx = wx - int(self.camera.offset.x)
+                sy = wy - int(self.camera.offset.y)
+                # draw a small red circle pin
+                pygame.draw.circle(self.screen, (255, 0, 0), (sx, sy), 5)
+                pygame.draw.circle(self.screen, (255, 255, 255), (sx, sy), 5, 1)
+
     # Called: run()
     def _draw(self):
 
@@ -126,6 +140,7 @@ class Indie_Game():
         self.ui.draw(self.screen, self.camera.offset, self.level.active_creatures)
         # Also draw the player bars.
         self.hud.draw(self.level.player)
+        self._draw_paths()
         # Draw the panels if openned.
         self.panel_player.draw()
         self.panel_creature.draw()
@@ -149,20 +164,6 @@ class Indie_Game():
 
         pygame.quit()
         sys.exit()
-
-
-    def _draw_paths(self):
-        for creature in self.level.creature_list:
-            if not creature.path:
-                continue
-            # Draw A* waypoints (red).
-            for wx, wy in creature.path:
-                # convert world to screen
-                sx = wx - int(self.camera.offset.x)
-                sy = wy - int(self.camera.offset.y)
-                # draw a small red circle pin
-                pygame.draw.circle(self.screen, (255, 0, 0), (sx, sy), 5)
-                pygame.draw.circle(self.screen, (255, 255, 255), (sx, sy), 5, 1)
 
 
 if __name__ == "__main__":

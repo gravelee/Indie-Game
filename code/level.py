@@ -32,7 +32,7 @@ class Level:
         # Debug code
         self.tilemap.print_grids()
 
-    # Called: init()
+    # Called: __init__()
     def _load_assets(self):
 
         # Loads assets: Ground tiles of the level.
@@ -42,7 +42,7 @@ class Level:
         # Give all to camera.
         self.camera.ground = self.ground
 
-    # Called: init()
+    # Called: __init__()
     def _spawn_entities(self):
 
         # player setup
@@ -114,10 +114,6 @@ class Level:
             c.obstacles   = self.obstacle_list
         # We pass all obstacles to tilemap.
         self.tilemap.obstacles = self.obstacle_list
-        # Updates all grids within tilemap.
-        for grid in range(1,4):
-            self.tilemap.update_tilemap(grid)
-
 
         # We pass pathfinder to all creatures and to all creatures all other creatures list
         pathfinder = Pathfinder(self.tilemap)
@@ -125,7 +121,10 @@ class Level:
             c.pathfinder    = pathfinder
             c.neighbors     = self.creature_list
 
+        self.tilemap.build_hitbox_grid(self.obstacle_list, hitbox_inflate = -50)
 
+
+    # Called: Indie_Game._update(), Indie_Game._draw()
     @property
     def active_creatures(self):
 

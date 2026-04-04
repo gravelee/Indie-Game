@@ -1,4 +1,3 @@
-from stats      import Stats
 from creature   import Creature
 from settings   import (NOTICE_COOLDOWN, HOME_MAX_DIST, NOTICE_DIRECTION, NOTICE_DIST, CHASE_DIST, ATTACK_DIST, FLEE_SPEED, HOME_DIST, BASE_MOVEMENT_SPEED)
 
@@ -25,11 +24,13 @@ class Snake(Creature):
     NON_COMBAT_STATES   = frozenset(("idle_neutral", "wander", "notice", "exit_stance", "returning", "dying"))
     ONE_SHOT_STATES     = frozenset(("notice", "enter_stance", "exit_stance", "attack_bite", "attack_tail slam", "dying"))
 
+    # Called: Level._spawn_entities()
     def __init__(self, x, y, stats, player, home_position = None, returning = False, fleeing = False, *groups):
         super().__init__(x, y, stats, player, home_position, returning, fleeing, *groups)
 
         self.stats.exp_multiplier = 2.0
 
+    # Called: Creature.update()
     def _update_state(self, dt, bounds = None):
 
         # If player is dead or dying enter returning state.
@@ -113,9 +114,6 @@ class Snake(Creature):
         # If creature in chase state.
         elif self.state == "chase":
 
-            # Creature moves towards the player.
-            self._move_smart(dt, self.target.rect, BASE_MOVEMENT_SPEED, bounds)
-
             # Calculates distance to home (home is either initial home or temporary home)
             dist_home = self._distance_to(self.home_position)
             # If distance from home is too far aways.
@@ -128,6 +126,9 @@ class Snake(Creature):
             # If player is out of chase range the creature enters exit stance state.
             elif dist > CHASE_DIST:
                 self._set_state("exit_stance")
+            else:
+                # Creature moves towards the player.
+                self._move_smart(dt, self.target.rect, BASE_MOVEMENT_SPEED, bounds)
 
         # If creature in exit stance state.
         elif self.state == "exit_stance":

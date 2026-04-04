@@ -3,6 +3,7 @@ from abilities import ABILITY_DATA
 
 class Ability:
 
+    # Called: get_ability()
     def __init__(self, name, level, damage_mult, cooldown, range_ , mp_cost,
         rage_cost, energy_cost, effect_name, effect_chance, anim, is_magic, description):
 
@@ -22,24 +23,14 @@ class Ability:
 
         self._timer        = 0.0
 
-    @property
-    def ready(self):
-
-        return self._timer <= 0.0
-
-    @property
-    def cooldown_pct(self):
-
-        return self._timer / self.cooldown if self.cooldown > 0 else 0.0
-
-    # Called: Player._tick_abilities()
+    # Called: Entity._update_cooldowns().
     def tick(self, dt):
 
         # If the abilities cooldown is on update the timer.
         if self._timer > 0:
             self._timer = max(0.0, self._timer - dt)
 
-    # Called: Creature._can_attack(), Player._pick_ability(), use()
+    # Called: use(), Entity._ready_abilities().
     def can_use(self, user_stats, dist):
 
         return (
@@ -50,7 +41,7 @@ class Ability:
             and user_stats.energy      >= self.energy_cost
         )
 
-    # Called: Creature._attack(), Player.attack()
+    # Called: Creature._attack(), Player.attack().
     def use(self, user_stats, target_stats, target_effects, dist):
 
         result = {
@@ -112,7 +103,21 @@ class Ability:
         self._timer = self.cooldown
         return result
 
-# Called: Creature.init(), Player.init()
+
+    # Called: can_use().
+    @property
+    def ready(self):
+
+        return self._timer <= 0.0
+
+    # Called: None.
+    @property
+    def cooldown_pct(self):
+
+        return self._timer / self.cooldown if self.cooldown > 0 else 0.0
+
+
+# Called: Creature.init(), Player.init().
 def get_ability(ability_name, level = 1):
 
     data = ABILITY_DATA[ability_name]

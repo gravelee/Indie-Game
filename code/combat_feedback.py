@@ -2,10 +2,12 @@ from settings import COLOR_EFFECT_TEXT, COLOR_EFFECT_FADE
 
 class CombatFeedback():
 
+    # Called: Indie_Game.__init__().
     def __init__(self, ui):
 
         self.ui = ui
 
+    # Called: Indie_Game._update()
     def process_player(self, player):
         """
         Read player's last attack result and DoT/effect data
@@ -50,6 +52,7 @@ class CombatFeedback():
                 COLOR_EFFECT_FADE
             )
 
+    # Called: Indie_Game._update()
     def process_entities(self, entities):
 
         for entity in entities:

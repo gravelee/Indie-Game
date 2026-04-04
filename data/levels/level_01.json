@@ -1,0 +1,58 @@
+
+{
+    "player": {
+        "str": 10, "agi": 10, "sta": 30,
+        "int": 0, "spr": 0, "res": 0, "def": 20,
+        "exp": 1000
+    },
+    "creatures": [
+    {
+        "row": 12, "col": 3, "type": "rat",
+        "str": 1, "agi": 0, "sta": 10,
+        "int": 0, "spr": 0, "res": 0, "def": 10,
+        "exp": 4000, "home": true, "returning": false, "fleeing": false
+    },
+    {
+        "row": 12, "col": 9, "type": "rat",
+        "str": 0, "agi": 1, "sta": 10,
+        "int": 0, "spr": 0, "res": 1, "def": 10,
+        "exp": 10000, "home": true, "returning": true, "fleeing": false
+    },
+    {
+        "row": 9, "col": 15, "type": "rat",
+        "str": 2, "agi": 1, "sta": 10,
+        "int": 0, "spr": 0, "res": 0, "def": 10,
+        "exp": 30000, "home": false, "returning": false, "fleeing": false
+    },
+    {
+        "row": 21, "col": 21, "type": "rat",
+        "str": 1, "agi": 0, "sta": 10,
+        "int": 0, "spr": 0, "res": 0, "def": 10,
+        "exp": 80000, "home": false, "returning": true, "fleeing": false
+    },
+    {
+        "row": 2, "col": 38, "type": "snake",
+        "str": 1, "agi": 2, "sta": 1,
+        "int": 0, "spr": 0, "res": 1, "def": 10,
+        "exp": 800000, "home": true, "returning": false, "fleeing": false
+    },
+    {
+        "row": 5, "col": 44, "type": "snake",
+        "str": 1, "agi": 1, "sta": 20,
+        "int": 0, "spr": 0, "res": 1, "def": 20,
+        "exp": 8000000, "home": true, "returning": true, "fleeing": false
+    },
+    {
+        "row": 8, "col": 50, "type": "snake",
+        "str": 1, "agi": 2, "sta": 30,
+        "int": 0, "spr": 0, "res": 1, "def": 10,
+        "exp": 1800000, "home": false, "returning": false, "fleeing": false
+    },
+    {
+        "row": 14, "col": 50, "type": "snake",
+        "str": 3, "agi": 2, "sta": 30,
+        "int": 0, "spr": 0, "res": 1, "def": 30,
+        "exp": 38000000, "home": false, "returning": true, "fleeing": false
+    }
+    ]
+}

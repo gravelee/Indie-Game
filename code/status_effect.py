@@ -1,8 +1,8 @@
 import random
 from statuses import STATUS_DATA
 
+# Called: Ability.use(), Effect.update()
 def roll(chance):
-
     return random.random() * 100 <= chance
 
 class Effect:
@@ -28,11 +28,6 @@ class Effect:
         self.tick_timer      = 0.0
         self.time_remaining  = self.duration
         self._original_value = None
-
-    @property
-    def duration_pct(self):
-
-        return max(0.0, self.time_remaining / self.duration)
 
     # Called EffectManager.apply()
     def reapply(self):
@@ -87,31 +82,38 @@ class Effect:
         return damage_dealt
 
 
+    # Called: None.
+    @property
+    def duration_pct(self):
+
+        return max(0.0, self.time_remaining / self.duration)
+
+
 class EffectManager:
 
     def __init__(self):
 
         self._active = []
 
-    # Called: debug_panel
+    # Called: StatPanel._build_lines().
     def __iter__(self):
-
         return iter(self._active)
 
-    # Called: debug_panel
+    # Called: StatPanel._build_lines().
     def __len__(self):
         return len(self._active)
 
-    def has(self, effect_name):
-
-        return self._find(effect_name) is not None
-
-    # Called: apply(), has(), cleanse()
+    # Called: has(), apply(), cleanse()
     def _find(self, effect_name):
         for effect in self._active:
             if effect.name == effect_name:
                 return effect
         return None
+
+    # Called: None.
+    def has(self, effect_name):
+
+        return self._find(effect_name) is not None
 
     # Called: Ability.use()
     def apply(self, effect_name, target_stats, source = None):
@@ -130,20 +132,7 @@ class EffectManager:
         self._active.append(effect)
         return True
 
-    # Called: Creature.update(), Player.update()
-    def update(self, dt, target_stats):
-
-        total_damage = 0
-        expired_names = []
-        for effect in self._active:
-            total_damage += effect.update(dt, target_stats)
-            if effect.expired:
-                expired_names.append(effect.name)
-
-        self._active = [effect for effect in self._active if not effect.expired]
-
-        return total_damage, expired_names
-
+    # Called: None.
     def cleanse(self, effect_name, target_stats):
 
         effect = self._find(effect_name)
@@ -158,3 +147,17 @@ class EffectManager:
         for effect in self._active:
             effect.on_remove(target_stats)
         self._active = []
+
+    # Called: Creature.update(), Player.update()
+    def update(self, dt, target_stats):
+
+        total_damage = 0
+        expired_names = []
+        for effect in self._active:
+            total_damage += effect.update(dt, target_stats)
+            if effect.expired:
+                expired_names.append(effect.name)
+
+        self._active = [effect for effect in self._active if not effect.expired]
+
+        return total_damage, expired_names

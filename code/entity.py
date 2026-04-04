@@ -11,6 +11,7 @@ class Entity(pygame.sprite.Sprite):
     _BASE               = "../assets/sprites/creatures/"
     _ANIM_FILES         = {}
 
+    # Called: Creature.__init__(), Player.__init__().
     def __init__(self, x, y, stats, *groups):
         super().__init__(*groups)
 
@@ -46,8 +47,7 @@ class Entity(pygame.sprite.Sprite):
         self.dot_damage         = 0
         self.expired_effects    = []
 
-
-    # Called: Creaturn.init(), Player.init()
+    # Called: Creature.__init__(), Player.__init__().
     def _load(self, filename, scale = SPRITE_SCALE):
 
         frames = SpriteSheet(self._BASE + filename, 32, 32).get_all_frames()
@@ -56,8 +56,8 @@ class Entity(pygame.sprite.Sprite):
         return frames
 
 
-    # Called: Creature._update_state(), Creature.attack(), Creature._begin_death(),
-    #           Player._update_state(), Player.attack(), Player._begin_death()
+    # Called: Creature._update_state(), Creature._attack(), Creature._begin_death(),
+    #           Player._update_state(), Player.attack(), Player._begin_death().
     def _set_state(self, new_state):
 
         if self.state != new_state:
@@ -66,14 +66,13 @@ class Entity(pygame.sprite.Sprite):
             self.anim_timer  = 0.0
             self.anim_done   = False
 
-
-    # Called: Creature.attack(), Player.attack()
+    # Called: Creature._attack(), Player.attack().
     def _pick_ability(self, choices):
 
         # Chooses one ability to use (max damage).
         return max(choices, key=lambda a: a.damage_mult)
 
-    # Called: Creature.attack(), Player.attack()
+    # Called: Creature._attack(), Player.attack().
     def _ready_abilities(self, dist):
 
         # Collect all usable abilities atm.
@@ -85,8 +84,7 @@ class Entity(pygame.sprite.Sprite):
             return None
         return usable
 
-
-    # Called: Creature.update(), Player.update()
+    # Called: Creature.update(), Player.update().
     def _regen(self, dt):
 
         # If entities state is dying skip regen.
@@ -109,7 +107,7 @@ class Entity(pygame.sprite.Sprite):
         # Updates the damage over time and effects on self.
         self.dot_damage, self.expired_effects = self.effects.update(dt, self.stats)
 
-    #   Called: Creature.update(), Player.update()
+    #   Called: Creature.update(), Player.update().
     def _update_cooldowns(self, dt):
 
         # If gcd timer is up update it.
@@ -120,18 +118,19 @@ class Entity(pygame.sprite.Sprite):
         for ability in self.abilities:
             ability.tick(dt)
 
-    # Called: Player.update()
+    # Called: Player.update(), Creature._attack(), Indie_Game._handle_events().
     def set_target_dist(self):
 
         self.target_dist = math.hypot(
             self.target.rect.centerx - self.rect.centerx,
             self.target.rect.centery - self.rect.centery)
 
-
-    # Called: Creature._begin_death(), Player._begin_death()
+    # Called: Creature._begin_death(), Player._begin_death().
     def _begin_death(self):
         pass
 
+
+    # Called: _regen(), Player._handle_movement(), UIManager._draw_hp_bars().
     @property
     def is_alive(self):
 

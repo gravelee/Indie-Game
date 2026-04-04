@@ -1,19 +1,5 @@
-# ═══════════════════════════════════════════════════════════════
-#  HUD.PY
-#  Screen-space player UI — drawn on top of everything.
-#  Completely separate from ui.py which handles world-space
-#  feedback like floating numbers and creature HP bars.
-#
-#  Shows:
-#    - Energy bar     (top)
-#    - HP bar         (middle) with current value centered
-#    - Rage/Mana bar  (bottom, only when > 0)
-#    - Rank title     (above bars, only after first real rank)
-#
-#  Numbers appear centered inside each bar and fade out when full.
-# ═══════════════════════════════════════════════════════════════
-
 import pygame
+
 from settings import (
     COLOR_HP_HIGH, COLOR_HP_MID, COLOR_HP_LOW, COLOR_HP_BG, COLOR_HP_BORDER,
     COLOR_ENERGY, COLOR_RAGE, COLOR_MANA,
@@ -32,17 +18,9 @@ HUD_RANK_SIZE  = 18     # rank title font size
 # Rank title only shows after player reaches this grade
 FIRST_REAL_RANK = "E"   # matches RANKS in stats.py
 
-
 class HUD:
-    """
-    Draws the player's screen-space HUD.
 
-    Usage in main.py:
-        self.hud = HUD(screen)
-        # in _draw():
-        self.hud.draw(self.level.player)
-    """
-
+    # Called: Indie_Game.__init__().
     def __init__(self, screen):
 
         self.screen   = screen
@@ -50,23 +28,70 @@ class HUD:
         self._font_rank = None
 
 
+    # Called: draw()
     def _get_font(self):
 
         if self._font is None:
             self._font = pygame.font.SysFont(None, HUD_FONT_SIZE)
         return self._font
 
-
+    # Called: draw()
     def _get_rank_font(self):
 
         if self._font_rank is None:
             self._font_rank = pygame.font.SysFont(None, HUD_RANK_SIZE)
         return self._font_rank
 
+    # Called: draw()
+    def _draw_bar(self, surface, x, y, w, h, pct, color,
+                  value=0, show_num=True):
+        """
+        Draw a single HUD bar with optional centered number.
+        Number fades in as bar empties — invisible when full.
+        """
+        border = 2
 
-    # ─────────────────────────────────────────────────────────
-    #  DRAW
-    # ─────────────────────────────────────────────────────────
+        # border
+        pygame.draw.rect(surface, COLOR_HP_BORDER,
+            pygame.Rect(x - border, y - border,
+                        w + border * 2, h + border * 2))
+        # background
+        pygame.draw.rect(surface, COLOR_HP_BG,
+            pygame.Rect(x, y, w, h))
+        # fill
+        fill_w = max(0, int(w * min(1.0, pct)))
+        if fill_w > 0:
+            pygame.draw.rect(surface, color,
+                pygame.Rect(x, y, fill_w, h))
+
+        # ── centered number — fades out when bar is full ───────
+        if show_num and h >= HUD_FONT_SIZE - 2:
+            font     = self._get_font()
+            text     = str(value)
+            surf     = font.render(text, True, (255, 255, 255))
+            # outline
+            outline  = font.render(text, True, (0, 0, 0))
+
+            # alpha — fades as pct approaches 1.0
+            # fully visible below 90%, fades between 90-100%
+            if pct < 0.9:
+                alpha = 255
+            else:
+                alpha = int(255 * (1.0 - (pct - 0.9) / 0.1))
+                alpha = max(0, alpha)
+
+            surf.set_alpha(alpha)
+            outline.set_alpha(alpha)
+
+            tx = x + (w - surf.get_width()) // 2
+            ty = y + (h - surf.get_height()) // 2
+
+            for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                surface.blit(outline, (tx + ox, ty + oy))
+            surface.blit(surf, (tx, ty))
+
+
+    # Called: Indie_Game._draw()
     def draw(self, player):
 
         stats  = player.stats
@@ -146,54 +171,3 @@ class HUD:
                 value    = int(stats.mp),
                 show_num = mana_pct < 1.0
             )
-
-
-    # ─────────────────────────────────────────────────────────
-    #  BAR HELPER
-    # ─────────────────────────────────────────────────────────
-    def _draw_bar(self, surface, x, y, w, h, pct, color,
-                  value=0, show_num=True):
-        """
-        Draw a single HUD bar with optional centered number.
-        Number fades in as bar empties — invisible when full.
-        """
-        border = 2
-
-        # border
-        pygame.draw.rect(surface, COLOR_HP_BORDER,
-            pygame.Rect(x - border, y - border,
-                        w + border * 2, h + border * 2))
-        # background
-        pygame.draw.rect(surface, COLOR_HP_BG,
-            pygame.Rect(x, y, w, h))
-        # fill
-        fill_w = max(0, int(w * min(1.0, pct)))
-        if fill_w > 0:
-            pygame.draw.rect(surface, color,
-                pygame.Rect(x, y, fill_w, h))
-
-        # ── centered number — fades out when bar is full ───────
-        if show_num and h >= HUD_FONT_SIZE - 2:
-            font     = self._get_font()
-            text     = str(value)
-            surf     = font.render(text, True, (255, 255, 255))
-            # outline
-            outline  = font.render(text, True, (0, 0, 0))
-
-            # alpha — fades as pct approaches 1.0
-            # fully visible below 90%, fades between 90-100%
-            if pct < 0.9:
-                alpha = 255
-            else:
-                alpha = int(255 * (1.0 - (pct - 0.9) / 0.1))
-                alpha = max(0, alpha)
-
-            surf.set_alpha(alpha)
-            outline.set_alpha(alpha)
-
-            tx = x + (w - surf.get_width()) // 2
-            ty = y + (h - surf.get_height()) // 2
-
-            for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-                surface.blit(outline, (tx + ox, ty + oy))
-            surface.blit(surf, (tx, ty))

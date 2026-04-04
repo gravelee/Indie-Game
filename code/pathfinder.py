@@ -1,7 +1,6 @@
 import heapq
 import math
-import random
-from settings import ATTACK_DIST, TILE_SIZE
+from settings import TILE_SIZE
 
 class Pathfinder:
 
@@ -9,7 +8,7 @@ class Pathfinder:
 
         self.tilemap = tilemap
 
-    # Called: find_path(), has_line_of_sight().
+    # Called: find_path(), line_of_sight().
     def _to_grid(self, world_pos):
 
         # Convert and returns world coordinates to grid coordinates.
@@ -19,7 +18,7 @@ class Pathfinder:
         col = max(0, min(col, self.tilemap.cols - 1))
         return (row, col)
 
-    # Called: _reconstruct(), find_path(), has_line_of_sight().
+    # Called: _reconstruct(), find_path(), line_of_sight().
     def _snap_to_tile_center(self, grid_pos):
 
         # If position is none returns none.
@@ -31,8 +30,8 @@ class Pathfinder:
         return (row * TILE_SIZE + TILE_SIZE // 2,
                 col * TILE_SIZE + TILE_SIZE // 2)
 
-    # Called: find_path()
-    def _nearest_walkable(self, grid_pos, tile_radius = 1):
+    # Called: find_path(), collision_handle().
+    def _nearest_walkable(self, grid_pos, tile_radius = 1, dynamic_blocked = None):
 
         # Does BFS to all tiles till it finds one closser to target coordinates.
         from collections import deque
@@ -40,17 +39,26 @@ class Pathfinder:
         queue = deque([grid_pos])
 
         while queue:
-            print(f"[_nearest_walkable] grid_pos={grid_pos}, tile_radius={tile_radius}")
+
             r, c = queue.popleft()
+
             # check all tiles creature would occupy
             fits = all(
                 0 <= r+er < self.tilemap.rows and
                 0 <= c+ec < self.tilemap.cols and
-                self.tilemap.is_walkable(0, r+er, c+ec)
+                self.tilemap.is_walkable(r+er, c+ec)
                 for er in range(-tile_radius, tile_radius + 1)
                 for ec in range(-tile_radius, tile_radius + 1)
             )
-            print(f"[_nearest_walkable] starting tile fits immediately: {fits}")
+
+            # Check precomputed hitbox grid.
+            if fits and self.tilemap.hitbox_blocked and self.tilemap.hitbox_blocked[r][c]:
+                    fits = False
+
+            # Check dynamic creature positions.
+            if fits and dynamic_blocked and (r, c) in dynamic_blocked:
+                fits = False
+
             if fits:
                 return (r, c)
 
@@ -88,11 +96,12 @@ class Pathfinder:
         return [self._snap_to_tile_center(grid_pos) for grid_pos in raw]
 
     # Called: find_path()
-    def _neighbors(self, row, col, tile_radius = 1):
+    def _neighbors(self, row, col, tile_radius = 1, dynamic_blocked = None):
 
         # Calculates and returns all neighboring tiles that can host the creature if it moves there.
         dirs = [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(-1,1),(1,-1),(1,1)]
         result = []
+
         for dr, dc in dirs:
 
             r, c = row + dr, col + dc
@@ -100,31 +109,24 @@ class Pathfinder:
             if not (0 <= r < self.tilemap.rows and 0 <= c < self.tilemap.cols):
                 continue
 
-            # Check all tiles the creature would occupy at this position.
-            fits = True
-            for er in range(-tile_radius, tile_radius + 1):
-                for ec in range(-tile_radius, tile_radius + 1):
+            # Center tile must not be a bush.
+            if not self.tilemap.is_walkable(r, c):
+                continue
 
-                    cr, cc = r + er, c + ec
+            # Precomputed hitbox check — O(1) lookup instead of per-frame rect collision.
+            if self.tilemap.hitbox_blocked and self.tilemap.hitbox_blocked[r][c]:
+                    continue
 
-                    if not (0 <= cr < self.tilemap.rows and 0 <= cc < self.tilemap.cols):
-                        fits = False
-                        break
+            if dynamic_blocked and (r, c) in dynamic_blocked:
+                continue
 
-                    if not self.tilemap.is_walkable(tile_radius, cr, cc):
-                        fits = False
-                        break
-
-                if not fits:
-                    break
-
-            if fits:
-                result.append((r, c))
+            result.append((r, c))
 
         return result
 
+
     # Called: Creature._move_smart()
-    def find_path(self, start_world, end_world, tile_radius = 1):
+    def find_path(self, start_world, end_world, tile_radius = 1, dynamic_blocked = None):
 
         # A* graph algorythm. Finds a path from creature to the target.
         start = self._to_grid(start_world)
@@ -133,8 +135,16 @@ class Pathfinder:
         # Snapped coordinates.
         snapped_start = self._snap_to_tile_center(start)
 
-        if not self.tilemap.is_walkable(tile_radius, *end):
-            end = self._nearest_walkable(end, tile_radius = 0)
+        # Always find nearest reachable tile to end — regardless of whether end is walkable
+        # This ensures we never try to pathfind to an unreachable destination
+        reachable_end = self._nearest_walkable(end, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked)
+        if reachable_end is None:
+            return []
+        end = reachable_end
+
+        # If end tile is hitbox-blocked, find nearest reachable tile.
+        if self.tilemap.hitbox_blocked and self.tilemap.hitbox_blocked[end[0]][end[1]]:
+            end = self._nearest_walkable(end, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked)
             if end is None:
                 return []
 
@@ -143,6 +153,19 @@ class Pathfinder:
         if start == end:
             return []
 
+        if not self._neighbors(*start, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked):
+            nearest = self._nearest_walkable(start, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked)
+            if nearest is None:
+                return []
+            return [snapped_start, self._snap_to_tile_center(nearest)]
+
+        # If end has no neighbors it is surrounded — find nearest reachable instead.
+        if not self._neighbors(*end, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked):
+            end = self._nearest_walkable(end, tile_radius = tile_radius, dynamic_blocked = None)
+            if end is None:
+                return []
+            snapped_end_tuple = self._snap_to_tile_center(end)
+
         open_set = []
         heapq.heappush(open_set, (0, start))
         came_from = {}
@@ -150,6 +173,7 @@ class Pathfinder:
         f_score = {start: self._heuristic(start, end)}
 
         while open_set:
+
             _, current = heapq.heappop(open_set)
             if current == end:
                 path = self._reconstruct(came_from, current)
@@ -158,7 +182,7 @@ class Pathfinder:
                     path.insert(0, snapped_start)
                 path.append(snapped_end_tuple)
                 return path
-            for neighbor in self._neighbors(*current, tile_radius = tile_radius):
+            for neighbor in self._neighbors(*current, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked):
                 dr = abs(neighbor[0] - current[0])
                 dc = abs(neighbor[1] - current[1])
                 step = 1.414 if dr == 1 and dc == 1 else 1.0
@@ -172,83 +196,17 @@ class Pathfinder:
         return []
 
     # Called: Creature._move_smart()
-    def handle_corners(self, start_world, end_world, tile_radius = 1):
-
-        # Casts a DDA ray from all creature footprint tiles to target central tile and checks every tile in between.
-        # We do that to check tile absence of obstacles between the target and the creature.
-        # Returns the coordinates for the next movement closer to target.
-        # None if no line of sight of the footprint exists.
-
-        # Converts world coordinates to grid coordinates.
-        start   = self._to_grid(start_world)
-        end     = self._to_grid(end_world)
-
-        # work directly in tile space — no world conversion needed
-        x0, y0 = float(start[0]), float(start[1])
-        x1, y1 = float(end[0]),   float(end[1])
-
-        # Checks all footprint tiles for clear LOS to the target.
-        has_sight = None
-        min_steps = None
-
-        for er in range(-tile_radius, tile_radius + 1):
-            for ec in range(-tile_radius, tile_radius + 1):
-
-                # Check only the footprint tiles that interests us.
-                # representing a cross of tiles with center the center of the creature.
-                if ((er < x0 or er > x0) and ec == y0) or ((ec < y0 or ec > y0) and er == x0):
-
-                    cr, cc = int(x0 + er), int(y0 + ec)
-
-                    # Calculate the vector and the steps to check (every tile once).
-                    dx = x1 - cr
-                    dy = y1 - cc
-                    steps = int(max(abs(dx), abs(dy)))
-                    if steps == 0:
-                        return (cr,cc)
-
-                    beem_cleared = True
-                    # For all the beem steps check.
-                    for i in range(steps + 1):
-
-                        t = i / steps
-                        x = cr + dx * t
-                        y = cc + dy * t
-
-                        # Because of t earlier we need to return to integer values.
-                        center_r = int(y)
-                        center_c = int(x)
-
-                        # Check if the tile in question is within or out of the map range.
-                        if not (0 <= center_r < self.tilemap.rows and
-                            0 <= center_c < self.tilemap.cols):
-                            beem_cleared = False
-                            break
-
-                        if not self.tilemap.is_walkable( -1, center_r, center_c):
-                            beem_cleared = False
-                            break
-
-                    # If line of sight and min_steps not init or coordinates with lower steps exist.
-                    if beem_cleared and (not min_steps or steps < min_steps):
-                        has_sight = (cr,cc)
-                        min_steps = steps
-
-        return self._snap_to_tile_center(has_sight)
-
-    # Called: Creature._move_smart()
     def collision_handle(self, start_world, tile_radius = 1):
 
         # Converts world coordinates to grid coordinates.
         start   = self._to_grid(start_world)
-        print(f"[collision_handle] start_world={start_world} → grid={start}, tile_radius={tile_radius}")
+
         nearest = self._nearest_walkable(start, tile_radius)
-        print(f"[collision_handle] nearest={nearest}")
+
         if nearest is None:
             return None
-        result = self._snap_to_tile_center(nearest)
-        print(f"[collision_handle] snapped result={result}")
-        return result
+
+        return self._snap_to_tile_center(nearest)
 
     # Called: Creature._move_smart()
     def move_to_target(self, start_world, end_world, tile_radius = 1):
@@ -261,10 +219,6 @@ class Pathfinder:
 
         # Calculate distance to target.
         original_dist = self._heuristic(start, end)
-
-        print(f"Start coordinates: ({start[0]}, {start[1]}).")
-        print(f"End   coordinates: ({end[0]}, {end[1]}).")
-        print(f"distance         : {original_dist}.")
 
         closer_coordinates = start
         min_distance = original_dist
@@ -280,7 +234,7 @@ class Pathfinder:
                 footprint_clear = all(
                     0 <= er+fr < self.tilemap.rows and
                     0 <= ec+fc < self.tilemap.cols and
-                    self.tilemap.is_walkable(0, er+fr, ec+fc)
+                    self.tilemap.is_walkable(er+fr, ec+fc)
                     for fr in range(-tile_radius, tile_radius + 1)
                     for fc in range(-tile_radius, tile_radius + 1)
                 )
@@ -295,15 +249,13 @@ class Pathfinder:
         return self._snap_to_tile_center(closer_coordinates)
 
     # Called: Creature._move_smart()
-    def line_of_sight( self, start_world, end_world, tile_radius = 1):
+    def line_of_sight( self, start_world, end_world, tile_radius = 1, neighbors = None):
 
         # Casts a beem from creatures tile center to targets tile center.
 
         # Converts world coordinates to grid coordinates.
         start   = self._to_grid(start_world)
         end     = self._to_grid(end_world)
-
-        print(f"[LOS] start_world={start_world} → grid={start} → tile_value={self.tilemap.original_grid[start[0]][start[1]]}")
 
         # work directly in tile space — no world conversion needed
         x0, y0 = float(start[0]), float(start[1])
@@ -316,52 +268,37 @@ class Pathfinder:
         if steps == 0:
             return True
 
-        # Cast multiple parallel rays spanning the creature's full width.
-        # All rays must be clear for LOS to be true.
-        offsets = range(-tile_radius, tile_radius + 1)
+        # For all the beem steps check.
+        for i in range(1, steps):
 
-        for offset in offsets:
+            t = i / steps
 
-            # Offset perpendicular to the ray direction.
-            # If ray is mostly horizontal offset in y, if mostly vertical offset in x.
-            if abs(dx) >= abs(dy):
-                ox, oy = 0, offset  # mostly horizontal ray → offset vertically
-            else:
-                ox, oy = offset, 0  # mostly vertical ray → offset horizontally
+            # Because of t earlier we need to return to integer values.
+            center_r = int(round(x0 + dx * t))
+            center_c = int(round(y0 + dy * t))
 
-            ray_clear = True
+            # Check if the tile in question is within or out of map range.
+            if not (0 <= center_r < self.tilemap.rows and
+                0 <= center_c < self.tilemap.cols):
+                    continue
 
-            # Skip the first and last tile_radius steps for offset rays
-            # so bushes beside the endpoints don't falsely block LOS
-            start_i = 1 if offset == 0 else tile_radius + 1
-            end_i   = steps if offset == 0 else steps - tile_radius
-
-            # For all the beem steps check.
-            for i in range(start_i, end_i):
-
-                t = i / steps
-                x = x0 + dx * t
-                y = y0 + dy * t
-
-                # Because of t earlier we need to return to integer values.
-                center_r = int(round(x))
-                center_c = int(round(y))
-
-                # Check if the tile in question is within or out of map range.
-                if not (0 <= center_r < self.tilemap.rows and
-                    0 <= center_c < self.tilemap.cols):
-                    ray_clear = False
-                    break
-
-                # Center ray uses raw grid — only actual bush tiles block
-                # Offset rays use occupied_grid_1 — detects clusters
-                grid_to_check = -1 if offset == 0 else 0
-
-                if not self.tilemap.is_walkable(grid_to_check, center_r, center_c):
-                    ray_clear = False
-                    break
-
-            if not ray_clear:
+            if not self.tilemap.is_walkable(center_r, center_c):
                 return False
+
+            # Block if ray passes through hitbox-blocked zone
+            # (creature body would overlap a bush if standing here)
+            if self.tilemap.hitbox_blocked and self.tilemap.hitbox_blocked[center_r][center_c]:
+                return False
+
+            # Block if a neighbor creature occupies this tile.
+            if neighbors:
+                world_x = center_r * TILE_SIZE + TILE_SIZE // 2
+                world_y = center_c * TILE_SIZE + TILE_SIZE // 2
+                if any(
+                    math.hypot(world_x - n.rect.centerx,
+                                world_y - n.rect.centery) < TILE_SIZE
+                    for n in neighbors
+                ):
+                    return False
 
         return True

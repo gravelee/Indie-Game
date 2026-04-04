@@ -5,6 +5,7 @@ class Bush(pygame.sprite.Sprite):
 
     _IMG = "../assets/sprites/objects/bush/bush.png"
 
+
     def __init__(self, x, y, tilemap, *groups):
         super().__init__(*groups)
 
@@ -17,14 +18,16 @@ class Bush(pygame.sprite.Sprite):
         self.alive          = True
         self.tile_radius    = SPRITE_SCALE // 2
 
+    # Called: Player.attack()
     def take_hit(self):
 
         self.alive = False
         # Updates the tilemap.
-        self.tilemap.update_tilemap(self.tile_radius, self.rect.centerx, self.rect.centery)
+        self.tilemap.update_tilemap(self.rect.centerx, self.rect.centery)
 
         self.kill()
 
+    # Called: UIManager._draw_hp_bars()
     @property
     def is_alive(self):
         return self.alive

@@ -11,20 +11,11 @@ from settings import (
     DMG_DRIFT_SPEED, DMG_WOBBLE_FREQ
 )
 
-
 class DamageNumber:
 
     _font = None   # shared font — loaded once
 
-
-    @classmethod
-    def get_font(cls):
-
-        if cls._font is None:
-            cls._font = pygame.font.SysFont(None, DMG_FONT_SIZE)
-        return cls._font
-
-
+    # Called: UIManager._spawn_text().
     def __init__(self, text, world_x, world_y, color, index = 0):
 
         self.text     = str(text)
@@ -42,26 +33,7 @@ class DamageNumber:
         self._w      = self._surf.get_width()
         self._h      = self._surf.get_height()
 
-
-    def update(self, dt):
-
-        self.elapsed += dt
-
-        if self.elapsed >= DMG_LIFETIME:
-            self.alive = False
-            return
-
-        self.world_y -= DMG_RISE_SPEED * dt
-
-        half_period = 1.0 / (DMG_WOBBLE_FREQ * 2)
-        wobble_phase = self.elapsed % (half_period * 2)
-        if wobble_phase > half_period:
-            if wobble_phase - dt < half_period:
-                self._direction = -self._direction
-
-        self.world_x  += self._direction * DMG_DRIFT_SPEED * dt
-
-
+    # Called: UIManager._draw_numbers().
     def draw(self, surface, camera_offset):
 
         if not self.alive:
@@ -82,15 +54,54 @@ class DamageNumber:
 
         surface.blit(surf_copy, (screen_x, screen_y))
 
+    # Called: UIManager.update().
+    def update(self, dt):
+
+        self.elapsed += dt
+
+        if self.elapsed >= DMG_LIFETIME:
+            self.alive = False
+            return
+
+        self.world_y -= DMG_RISE_SPEED * dt
+
+        half_period = 1.0 / (DMG_WOBBLE_FREQ * 2)
+        wobble_phase = self.elapsed % (half_period * 2)
+        if wobble_phase > half_period:
+            if wobble_phase - dt < half_period:
+                self._direction = -self._direction
+
+        self.world_x  += self._direction * DMG_DRIFT_SPEED * dt
+
+
+    # Called: __init__(), draw().
+    @classmethod
+    def get_font(cls):
+
+        if cls._font is None:
+            cls._font = pygame.font.SysFont(None, DMG_FONT_SIZE)
+        return cls._font
+
 
 class UIManager:
 
+    # Called: Indie_Game.__init__().
     def __init__(self):
 
         self._numbers      = []     # active DamageNumber instances
         self._spawn_count  = 0      # tracks index for alternating drift
 
+    # Called: spawn(), CombatFeedback.process_player(), CombatFeedback.process_entities().
+    def _spawn_text(self, text, world_x, world_y, color):
 
+        number = DamageNumber(
+            text, world_x, world_y, color,
+            index = self._spawn_count
+        )
+        self._numbers.append(number)
+        self._spawn_count += 1
+
+    # Called: spawn_from_result(), spawn_dot(), spawn_exp().
     def spawn(self, value, world_x, world_y, kind = "physical"):
 
         if kind == "block":
@@ -115,6 +126,7 @@ class UIManager:
             self._spawn_text(str(int(value)), world_x, world_y, color)
 
 
+    # Called: CombatFeedback.process_player(), CombatFeedback.process_entities().
     def spawn_from_result(self, result, world_x, world_y, is_magic = False):
 
         hit_type = result.get("hit_type", "normal")
@@ -134,40 +146,18 @@ class UIManager:
             else:
                     self.spawn(result["damage"], world_x, world_y, "physical")
 
-
+    # Called: CombatFeedback.process_player(), CombatFeedback.process_entities().
     def spawn_dot(self, value, world_x, world_y):
 
         self.spawn(value, world_x, world_y, "dot")
 
-
+    # Called: CombatFeedback.process_entities().
     def spawn_exp(self, amount, world_x, world_y):
 
         self._spawn_text(f"EXP {int(amount)}", world_x, world_y, COLOR_EXP)
 
 
-    def _spawn_text(self, text, world_x, world_y, color):
-
-        number = DamageNumber(
-            text, world_x, world_y, color,
-            index = self._spawn_count
-        )
-        self._numbers.append(number)
-        self._spawn_count += 1
-
-
-    def update(self, dt):
-
-        for n in self._numbers:
-            n.update(dt)
-        self._numbers = [n for n in self._numbers if n.alive]
-
-
-    def draw(self, surface, camera_offset, entities):
-
-        self._draw_hp_bars(surface, camera_offset, entities)
-        self._draw_numbers(surface, camera_offset)
-
-
+    # Called: draw().
     def _draw_hp_bars(self, surface, camera_offset, entities):
 
         for entity in entities:
@@ -240,8 +230,21 @@ class UIManager:
                 draw_bar(cursor, SUB_BAR_H,
                             max(0.0, stats.mp / stats.mp_max), COLOR_MANA)
 
-
+    # Called: draw().
     def _draw_numbers(self, surface, camera_offset):
 
         for number in self._numbers:
             number.draw(surface, camera_offset)
+
+    # Called: Indie_Game._draw().
+    def draw(self, surface, camera_offset, entities):
+
+        self._draw_hp_bars(surface, camera_offset, entities)
+        self._draw_numbers(surface, camera_offset)
+
+    # Called: Indie_Game._update().
+    def update(self, dt):
+
+        for n in self._numbers:
+            n.update(dt)
+        self._numbers = [n for n in self._numbers if n.alive]
