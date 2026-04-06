@@ -112,6 +112,12 @@ class Indie_Game():
         for creature in self.level.creatures:
             creature.update(dt, self.bounds)
 
+        # Update all obstacles (e.g. bush death animations).
+        # Use the sprite group — dying bushes are removed from obstacle_list
+        # on hit but stay in the group until their animation finishes.
+        for obstacle in self.obstacles:
+            obstacle.update(dt)
+
         # Update ui and combat feedback for all.
         self.ui.update(dt)
         self.feedback.process_player(self.level.player)

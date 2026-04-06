@@ -182,6 +182,15 @@ class Player(Entity):
         # This is the footprint the outcome of the ability being used on all targets within an area.
         results = ability.use(self.stats, targets, 0.0)
 
+
+        zone = self._get_attack_zone()
+
+        # Destroy any damageable obstacles (e.g. bushes) in the attack zone.
+        for obs in list(self.obstacles):
+            if obs.is_alive and any(obs.hitbox.colliderect(tile) for tile in zone):
+                # take_hit() handles tilemap update and sprite removal automatically.
+                obs.take_hit()
+
         # Wake up target creature if in one of its non combat states.
         for t in targets:
             if t.state in t.NON_COMBAT_STATES:
