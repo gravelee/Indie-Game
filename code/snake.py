@@ -1,3 +1,5 @@
+import math
+
 from creature   import Creature
 from settings   import (NOTICE_COOLDOWN, HOME_MAX_DIST, NOTICE_DIRECTION, NOTICE_DIST, CHASE_DIST, ATTACK_DIST, FLEE_SPEED, HOME_DIST, BASE_MOVEMENT_SPEED)
 
@@ -42,7 +44,13 @@ class Snake(Creature):
         # Calculate distance to the player and also direction if the player is close enough.
         dist = self._distance_to(self.target.rect)
         if dist < NOTICE_DIRECTION:
-            self.facing_right = self.target.rect.centerx > self.rect.centerx
+            rad = math.radians(self.camera_angle)
+            cos_a = math.cos(rad)
+            sin_a = math.sin(rad)
+            dx = self.target.rect.centerx - self.rect.centerx
+            dy = self.target.rect.centery - self.rect.centery
+            screen_dx = dx * cos_a - dy * sin_a
+            self.facing_right = screen_dx > 0
 
         # If creature in idle neutral or wander state.
         if self.state in ("idle_neutral", "wander"):
@@ -151,7 +159,6 @@ class Snake(Creature):
 
             # Calculate distance to home (home is either initial home or temporary home) and direction.
             dist_home = self._distance_to(self.home_position)
-            self.facing_right = self.home_position.centerx > self.rect.centerx
 
             # Returning = If creature is returning home and player enters creatures noticing range
             # the creature will ignore him and will continue running toward home.

@@ -34,7 +34,7 @@ class DamageNumber:
         self._h      = self._surf.get_height()
 
     # Called: UIManager._draw_numbers().
-    def draw(self, surface, camera_offset):
+    def draw(self, surface, camera):
 
         if not self.alive:
             return
@@ -44,8 +44,9 @@ class DamageNumber:
         surf_copy = self._surf.copy()
         surf_copy.set_alpha(alpha)
 
-        screen_x = int(self.world_x - camera_offset.x) - self._w // 2
-        screen_y = int(self.world_y - camera_offset.y) - self._h // 2
+        sx, sy = camera.world_to_screen(self.world_x, self.world_y, camera._player)
+        screen_x = int(sx) - self._w // 2
+        screen_y = int(sy) - self._h // 2
 
         outline_surf = self.get_font().render(self.text, True, (0, 0, 0))
         outline_surf.set_alpha(alpha)
@@ -158,7 +159,7 @@ class UIManager:
 
 
     # Called: draw().
-    def _draw_hp_bars(self, surface, camera_offset, entities):
+    def _draw_hp_bars(self, surface, camera, entities):
 
         for entity in entities:
 
@@ -177,7 +178,11 @@ class UIManager:
             if stats.hp_max <= 0:
                 continue
 
-            screen_x = entity.rect.centerx - int(camera_offset.x) - HP_BAR_W // 2
+            # Convert entity world position to screen position via camera.
+            sx, sy = camera.world_to_screen(
+                entity.rect.centerx, entity.rect.centery, camera._player)
+            screen_x = int(sx) - HP_BAR_W // 2
+
             energy_pct = min(1.0, stats.energy / stats.energy_max)
             has_energy = energy_pct < 1.0
             has_rage = stats.rage > 0
@@ -190,7 +195,7 @@ class UIManager:
             if has_sub:
                 total_h += BAR_GAP + SUB_BAR_H
 
-            stack_top = entity.rect.top - int(camera_offset.y) - HP_BAR_OFFSET - total_h
+            stack_top = int(sy) - HP_BAR_OFFSET - total_h - 40
 
 
             def draw_bar(y, h, pct, color):
@@ -231,16 +236,16 @@ class UIManager:
                             max(0.0, stats.mp / stats.mp_max), COLOR_MANA)
 
     # Called: draw().
-    def _draw_numbers(self, surface, camera_offset):
+    def _draw_numbers(self, surface, camera):
 
         for number in self._numbers:
-            number.draw(surface, camera_offset)
+            number.draw(surface, camera)
 
     # Called: Indie_Game._draw().
-    def draw(self, surface, camera_offset, entities):
+    def draw(self, surface, camera, entities):
 
-        self._draw_hp_bars(surface, camera_offset, entities)
-        self._draw_numbers(surface, camera_offset)
+        self._draw_hp_bars(surface, camera, entities)
+        self._draw_numbers(surface, camera)
 
     # Called: Indie_Game._update().
     def update(self, dt):

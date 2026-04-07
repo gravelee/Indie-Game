@@ -137,14 +137,14 @@ class Pathfinder:
 
         # Always find nearest reachable tile to end — regardless of whether end is walkable
         # This ensures we never try to pathfind to an unreachable destination
-        reachable_end = self._nearest_walkable(end, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked)
+        reachable_end = self._nearest_walkable(end, tile_radius = 0, dynamic_blocked = dynamic_blocked)
         if reachable_end is None:
             return []
         end = reachable_end
 
         # If end tile is hitbox-blocked, find nearest reachable tile.
         if self.tilemap.hitbox_blocked and self.tilemap.hitbox_blocked[end[0]][end[1]]:
-            end = self._nearest_walkable(end, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked)
+            end = self._nearest_walkable(end, tile_radius = 0, dynamic_blocked = dynamic_blocked)
             if end is None:
                 return []
 
@@ -160,8 +160,8 @@ class Pathfinder:
             return [snapped_start, self._snap_to_tile_center(nearest)]
 
         # If end has no neighbors it is surrounded — find nearest reachable instead.
-        if not self._neighbors(*end, tile_radius = tile_radius, dynamic_blocked = dynamic_blocked):
-            end = self._nearest_walkable(end, tile_radius = tile_radius, dynamic_blocked = None)
+        if not self._neighbors(*end, tile_radius = 0, dynamic_blocked = dynamic_blocked):
+            end = self._nearest_walkable(end, tile_radius = 0, dynamic_blocked = None)
             if end is None:
                 return []
             snapped_end_tuple = self._snap_to_tile_center(end)

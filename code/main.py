@@ -1,5 +1,6 @@
 import pygame
 import sys
+import math
 
 from camera             import YSortCameraGroup
 from combat_feedback    import CombatFeedback
@@ -55,8 +56,37 @@ class Indie_Game():
         self.running = True
         self.bounds = pygame.Rect(0, 0, MAP_W, MAP_H)
 
+        # ── Camera rotation ────────────────────────────────────
+        self.world_angle     = 0.0
+        self._rmb_held       = False
+        self._rmb_last_mouse = None
+
     # Called: run()
     def _handle_events(self):
+
+        # ── Right-click drag — rotate world ───────────────────
+        if self._rmb_held:
+            mx, my = pygame.mouse.get_pos()
+            if self._rmb_last_mouse is not None:
+                player = self.level.player
+                px = player.rect.centerx - int(self.camera.offset.x)
+                py = player.rect.centery - int(self.camera.offset.y)
+
+                # Angle from player to last and current mouse positions.
+                last_angle = math.degrees(math.atan2(
+                    self._rmb_last_mouse[1] - py,
+                    self._rmb_last_mouse[0] - px))
+                curr_angle = math.degrees(math.atan2(my - py, mx - px))
+
+                delta = curr_angle - last_angle
+                # Wrap delta to [-180, 180] to avoid jumps.
+                if delta > 180:  delta -= 360
+                if delta < -180: delta += 360
+
+                self.world_angle = (self.world_angle - delta) % 360
+                self.camera.angle = self.world_angle
+
+            self._rmb_last_mouse = (mx, my)
 
         # Handle player keyboard and mouse inputs.
         for event in pygame.event.get():
@@ -72,23 +102,33 @@ class Indie_Game():
                 if event.key == pygame.K_p:
                     self.panel_player.toggle()
 
-            # debugging tools
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                mx, my = pygame.mouse.get_pos()
-                # convert screen pos to world pos
-                wx = mx + self.camera.offset.x
-                wy = my + self.camera.offset.y
-                clicked_creature = None
-                for creature in self.level.creatures:
-                    if creature.rect.collidepoint(wx, wy):
-                        clicked_creature = creature
-                        break
-                if clicked_creature:
-                    self.level.player.target = clicked_creature
-                    self.level.player.set_target_dist()
-                else:
-                    self.level.player.target = None
-                    self.level.player.target_dist = 0
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+
+                if event.button == 3:   # right click — start rotation drag
+                    self._rmb_held = True
+                    self._rmb_last_mouse = pygame.mouse.get_pos()
+
+                if event.button == 1:
+                    mx, my = pygame.mouse.get_pos()
+                    # Convert screen pos to world pos accounting for rotation.
+                    wx, wy = self.camera.screen_to_world(mx, my, self.level.player)
+                    clicked_creature = None
+                    for creature in self.level.creatures:
+                        if creature.rect.collidepoint(wx, wy):
+                            clicked_creature = creature
+                            break
+                    if clicked_creature:
+                        self.level.player.target = clicked_creature
+                        self.level.player.set_target_dist()
+                    else:
+                        self.level.player.target = None
+                        self.level.player.target_dist = 0
+
+            if event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 3:   # right click released
+                    self._rmb_held = False
+                    self._rmb_last_mouse = None
 
     # Called: run()
     def _update(self, dt):
@@ -106,11 +146,11 @@ class Indie_Game():
             self.panel_creature.close()
 
         # Update the player.
-        self.level.player.update(dt, self.bounds)
+        self.level.player.update(dt, self.bounds, self.world_angle)
 
         # Update all creatures in the level.
         for creature in self.level.creatures:
-            creature.update(dt, self.bounds)
+            creature.update(dt, self.bounds, self.world_angle)
 
         # Update all obstacles (e.g. bush death animations).
         # Use the sprite group — dying bushes are removed from obstacle_list
@@ -143,7 +183,7 @@ class Indie_Game():
         # Draw everything that falls within camera limits.
         self.camera.custom_draw(self.level.player)
         # After camera draw ui and combat feedback.
-        self.ui.draw(self.screen, self.camera.offset, self.level.active_creatures)
+        self.ui.draw(self.screen, self.camera, self.level.active_creatures)
         # Also draw the player bars.
         self.hud.draw(self.level.player)
         #self._draw_paths()

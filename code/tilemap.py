@@ -90,6 +90,12 @@ class TileMap:
                 if any(creature_hitbox.colliderect(obs.hitbox) for obs in obstacles):
                     self.hitbox_blocked[r][c] = True
 
+        #for r in range(self.rows):
+        #    for c in range(self.cols):
+        #        tile_rect = pygame.Rect(r * TILE_SIZE, c * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+        #        if any(tile_rect.colliderect(obs.rect) for obs in obstacles):
+        #            self.hitbox_blocked[r][c] = True
+
     # Called: Bush.take_hit()
     def update_tilemap(self, world_x, world_y):
 

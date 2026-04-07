@@ -367,9 +367,13 @@ class Creature(Entity):
             self.rect.y = round(self.pos_y)
             self.hitbox.center = self.rect.center
 
-            # Face the direction of movement, not the player.
+            # Face the direction of movement accounting for camera rotation.
             if abs(dx) > abs(dy):
-                self.facing_right = dx > 0
+                rad = math.radians(self.camera_angle)
+                cos_a = math.cos(rad)
+                sin_a = math.sin(rad)
+                screen_dx = dx * cos_a - dy * sin_a
+                self.facing_right = screen_dx > 0
 
         else:
 
@@ -479,10 +483,22 @@ class Creature(Entity):
     # Called: Rat._update_state(), Snake._update_state()
     def _snap_to_home(self):
 
-        # Updated the new (x,y) position of creature to home position.
+        # Snap position to home.
         self.pos_x         = float(self.home_position.x)
         self.pos_y         = float(self.home_position.y)
         self.rect.topleft  = self.home_position.topleft
+        self.hitbox.center = self.rect.center
+
+        # Clear movement state so no stale path carries over.
+        self.move_target = None
+        self.path        = []
+        self.plan        = None
+
+        self.wander_elapsed  = 0.0
+        self.wander_duration = 0.0
+        self.wander_dx       = 0.0
+        self.wander_dy       = 0.0
+        self.wander_timer    = 0.0
 
         # If temp home then remove it.
         if self.temp_home:
@@ -579,7 +595,9 @@ class Creature(Entity):
         self.in_combat  = self.state in self.COMBAT_STATES
 
     # Called: Indie_Game._update()
-    def update(self, dt, bounds = None):
+    def update(self, dt, bounds = None, camera_angle = 0.0):
+
+        self.camera_angle = camera_angle
 
         if self.state != "dead":
             self._animate(dt)           # Creature

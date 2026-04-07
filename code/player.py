@@ -73,6 +73,7 @@ class Player(Entity):
         self.facing             = "south"   # cardinal direction
         self.stopped            = False
         self.player_move_input  = False
+        self.camera_angle       = 0.0
 
         # Load all animations.
         self.animations = {}
@@ -105,6 +106,7 @@ class Player(Entity):
         c = self.rect.centery // TILE_SIZE
         ts = TILE_SIZE
 
+        # Screen-space facing tiles (unchanged).
         if self.facing == "south":
             tiles = [(r-1, c+1), (r, c+1), (r+1, c+1), (r, c+2)]
         elif self.facing == "north":
@@ -113,6 +115,21 @@ class Player(Entity):
             tiles = [(r+1, c-1), (r+1, c), (r+1, c+1), (r+2, c)]
         elif self.facing == "west":
             tiles = [(r-1, c-1), (r-1, c), (r-1, c+1), (r-2, c)]
+
+        # Rotate each tile offset around the player tile by -camera_angle
+        # to convert from screen-space to world-space.
+        if self.camera_angle != 0.0:
+            rad = math.radians(-self.camera_angle)
+            cos_a = math.cos(rad)
+            sin_a = math.sin(rad)
+            rotated = []
+            for tx, ty in tiles:
+                dr = tx - r
+                dc = ty - c
+                nr = dr * cos_a - dc * sin_a
+                nc = dr * sin_a + dc * cos_a
+                rotated.append((r + round(nr), c + round(nc)))
+            tiles = rotated
 
         return [pygame.Rect(tx * ts, ty * ts, ts, ts) for tx, ty in tiles]
 
@@ -215,7 +232,9 @@ class Player(Entity):
         return True
 
     # Called: Player.update()
-    def _handle_movement(self, dt, bounds):
+    def _handle_movement(self, dt, bounds, camera_angle = 0.0):
+
+        self.camera_angle = camera_angle
 
         # Block movement during one-shot states.
         if self.state in self.ONE_SHOT_STATES:
@@ -238,8 +257,22 @@ class Player(Entity):
             dx /= dist
             dy /= dist
 
-            # Update facing direction from movement vector.
-            self._update_facing(dx, dy)
+            # Screen-space direction — used to pick facing animation.
+            # This is what the player intends visually (W = up on screen).
+            screen_dx, screen_dy = dx, dy
+
+            # Rotate the input vector by the camera angle so WASD always
+            # moves relative to the screen orientation, not the world.
+            if camera_angle != 0.0:
+                rad = math.radians(-camera_angle)
+                cos_a = math.cos(rad)
+                sin_a = math.sin(rad)
+                dx, dy = (dx * cos_a - dy * sin_a,
+                            dx * sin_a + dy * cos_a)
+
+            # Facing is based on screen-space intent, not world-space direction,
+            # so the animation always matches what the player sees.
+            self._update_facing(screen_dx, screen_dy)
 
             # Calculate imaginary hitbox and move it to the direction the player is moving
             # If there is collision do not let the player to move at that direction.
@@ -398,11 +431,11 @@ class Player(Entity):
         )
 
     # Called: Indie_Game._update()
-    def update(self, dt, bounds = None):
+    def update(self, dt, bounds = None, camera_angle = 0.0):
 
         if self.state != "dead":
             if bounds:
-                self._handle_movement(dt, bounds)   # Player
+                self._handle_movement(dt, bounds, camera_angle)   # Player
             if self.target:
                 self.set_target_dist()              # Entity
             self._animate(dt)                       # Player
