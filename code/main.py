@@ -37,7 +37,7 @@ class Indie_Game():
             self.players, self.creatures, self.obstacles, MAP_W, MAP_H)
 
         # ui and feedback — after display is ready
-        self.ui = UIManager()
+        self.ui = UIManager(self.camera)
         self.feedback = CombatFeedback(self.ui)
         self.hud = HUD(self.screen)
 
@@ -83,8 +83,10 @@ class Indie_Game():
                 if delta > 180:  delta -= 360
                 if delta < -180: delta += 360
 
-                self.world_angle = (self.world_angle - delta) % 360
-                self.camera.angle = self.world_angle
+                # Only if the change in the delta (camera angle degree) is significant enough (at least 2 degrees).
+                if abs(delta) >= 4.0:
+                    self.world_angle = (self.world_angle - delta) % 360
+                    self.camera.angle = round(self.world_angle / 4) * 4 % 360
 
             self._rmb_last_mouse = (mx, my)
 
@@ -170,12 +172,9 @@ class Indie_Game():
                 continue
             # Draw A* waypoints (red).
             for wx, wy in creature.path:
-                # convert world to screen
-                sx = wx - int(self.camera.offset.x)
-                sy = wy - int(self.camera.offset.y)
-                # draw a small red circle pin
-                pygame.draw.circle(self.screen, (255, 0, 0), (sx, sy), 5)
-                pygame.draw.circle(self.screen, (255, 255, 255), (sx, sy), 5, 1)
+                sx, sy = self.camera.world_to_screen(wx, wy, self.level.player)
+                pygame.draw.circle(self.screen, (255, 0, 0), (int(sx), int(sy)), 5)
+                pygame.draw.circle(self.screen, (255, 255, 255), (int(sx), int(sy)), 5, 1)
 
     # Called: run()
     def _draw(self):
@@ -186,7 +185,7 @@ class Indie_Game():
         self.ui.draw(self.screen, self.camera, self.level.active_creatures)
         # Also draw the player bars.
         self.hud.draw(self.level.player)
-        #self._draw_paths()
+        self._draw_paths()
         # Draw the panels if openned.
         self.panel_player.draw()
         self.panel_creature.draw()
@@ -196,7 +195,11 @@ class Indie_Game():
     # Called: __main__()
     def run(self):
 
+
+
         while self.running:
+
+            print(f"FPS: {self.clock.get_fps():.0f}  angle: {self.world_angle:.0f}  cam: {self.camera.angle:.0f} cache: {len(self.camera._sprite_rot_cache):.0f}")
 
             # Minimal passed time to update the game.
             dt = min(self.clock.tick(FPS) / 1000.0, 0.05)

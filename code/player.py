@@ -68,7 +68,6 @@ class Player(Entity):
         super().__init__(x, y, stats, *groups)
 
         self.enemies            = []
-        self.obstacles          = []
         self.facing_angle       = 0.0
         self.facing             = "south"   # cardinal direction
         self.stopped            = False
@@ -134,9 +133,12 @@ class Player(Entity):
         return [pygame.Rect(tx * ts, ty * ts, ts, ts) for tx, ty in tiles]
 
     # Called: attack()
-    def _targets_in_zone(self):
+    def _targets_in_zone(self, zone = None):
+
         # Returns all enemies whose hitbox overlaps the attack zone.
-        zone = self._get_attack_zone()
+        if zone == None:
+            zone = self._get_attack_zone()
+
         return [
             e for e in self.enemies
             if e.state not in ("dead", "dying")
@@ -193,19 +195,19 @@ class Player(Entity):
         # You choose an ability (from the list before) based on max damage output.
         ability = self._pick_ability(choices)
 
+        # Get the area of the attack.
+        zone = self._get_attack_zone()
+
         # Get all targets in zone.
-        targets = self._targets_in_zone()
+        targets = self._targets_in_zone(zone)
 
         # This is the footprint the outcome of the ability being used on all targets within an area.
         results = ability.use(self.stats, targets, 0.0)
 
-
-        zone = self._get_attack_zone()
-
         # Destroy any damageable obstacles (e.g. bushes) in the attack zone.
-        for obs in list(self.obstacles):
-            if obs.is_alive and any(obs.hitbox.colliderect(tile) for tile in zone):
-                # take_hit() handles tilemap update and sprite removal automatically.
+        for tile in zone:
+            obs = self._nearby_obstacle(tile)
+            if obs and obs.is_alive:
                 obs.take_hit()
 
         # Wake up target creature if in one of its non combat states.
@@ -292,10 +294,7 @@ class Player(Entity):
 
             # Check obstacle collision.
             if not blocked:
-                blocked = any(
-                    new_hitbox.colliderect(obs.hitbox)
-                    for obs in self.obstacles
-                )
+                blocked = self._nearby_obstacle(new_hitbox) is not None
 
             if not blocked:
 

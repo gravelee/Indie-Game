@@ -26,38 +26,40 @@ class Creature(Entity):
         self.temp_home              = False
         self.returning              = returning
         self.fleeing                = fleeing
-        self.home_max_dist          = 0
         self.out_of_energy          = False
         self.notice_cooldown        = NOTICE_COOLDOWN
-        self.obstacles              = []
         self.facing_right           = False
+        self.home_max_dist          = False
+
+        self.neighbors              = []
 
         # Wander attr
         self.wander_timer           = random.uniform(0, 1.0)
         self.wander_interval        = random.uniform(0.9, 1.1)
         self.wander_interval_range  = (0.9, 1.1)
-        self.wander_chance          = 0.04
+        self.wander_chance          = 0.40
         self.wander_duration        = 0.0
         self.wander_duration_range  = (0.5, 3.0)
         self.wander_elapsed         = 0.0
         self.wander_dx              = 0.0
         self.wander_dy              = 0.0
+        self.force_wander           = False
 
-        # Pathfinder attr
+        # Smart move attr
         self.pathfinder             = None      # set by level after spawn
-        self.neighbors              = []        # nearby creatures for separation.
         self.path                   = []        # current A* waypoint list
-        self.path_update_timer      = random.uniform(0, 1.0)  # staggered start
+        self.path_update_timer      = random.uniform(0, 1.0)    # staggered start
         self.path_update_interval   = random.uniform(0.8, 1.2)  # slightly different intervals
-        self.plan                   = None
-        self.move_target            = None
-        self.stuck_counter          = 0
-        self.last_pos_x             = 0.0
-        self.last_pos_y             = 0.0
-        self.no_progress_counter    = 0
         self.line_of_sight          = False
         self.los_lock_timer         = 0.0
         self.los_lock_interval      = random.uniform(1.8, 2.2)  # stagger LOS too
+        self.plan                   = None
+        self.move_target            = None
+        self.stuck_counter          = 0
+        self.no_progress_counter    = 0
+        self.last_pos_x             = 0.0
+        self.last_pos_y             = 0.0
+
 
         # Sprite / hitbox attr
         self.animations             = {k: self._load(self._SUBBASE + self._SUBBASE2 + v) for k, v in self._ANIM_FILES.items()}
@@ -74,71 +76,53 @@ class Creature(Entity):
         dy = target_rect.centery - self.rect.centery
         return (dx**2 + dy**2) ** 0.5
 
-    # Called: _wander(), Rat._update_state(), Snake._update_state().
+    # Called: _wander(), _move_smart(), Rat._update_state(), Snake._update_state().
+    def _update_facing(self, world_dx, world_dy):
+
+        rad = math.radians(self.camera_angle)
+        cos_a = math.cos(rad)
+        sin_a = math.sin(rad)
+        screen_dx = world_dx * cos_a - world_dy * sin_a
+        self.facing_right = screen_dx > 0
+
+    # Called: _wander().
     def _move_toward(self, dt, target_rect, speed, bounds = None):
 
         # It calculates the distance to target (player, home_position).
         dist = max(self._distance_to(target_rect), 1)
 
         # Calculates and updates the new (x,y) position.
-        new_x = self.pos_x + ((target_rect.centerx - self.rect.centerx) / dist) * speed * dt
-        new_y = self.pos_y + ((target_rect.centery - self.rect.centery) / dist) * speed * dt
+        dx = (target_rect.centerx - self.rect.centerx) / dist * speed * dt
+        dy = (target_rect.centery - self.rect.centery) / dist * speed * dt
 
         # Imaginary hitbox if creature moves dt.
-        new_hitbox = self.hitbox.move(
-            round(new_x) - self.rect.x,
-            round(new_y) - self.rect.y
-        )
+        new_hitbox = self.hitbox.move(round(dx), round(dy))
 
-        # If creatures future movement hits the player stops it before moving there.
+        # Collision with player.
         if new_hitbox.colliderect(self.target.hitbox):
             return
 
-        obs_col = None
-        # If creatures future movement hits an obstacle.
-        for obs in self.obstacles:
-            if new_hitbox.colliderect(obs.hitbox):
-                obs_col = obs
-                break
+        # Collision with obstacle.
+        obs_col = self._nearby_obstacle(new_hitbox)
 
-        # If nothing of the above set the new coordinates of the creature.
-        self.pos_x = new_x
-        self.pos_y = new_y
+        # Collision with bounds.
+        new_rect = self.rect.move(round(dx), round(dy))
+        out_of_bounds = bounds and not bounds.contains(new_rect)
+
+        # If collision with obstacle or bounds.
+        if obs_col or out_of_bounds:
+            # Force a wander start signal.
+            self.wander_timer = self.wander_interval
+            self.force_wander = True
+            # Dont let creature to move.
+            return
+
+        # If nothing of the above. Set the new coordinates of the creature.
+        self.pos_x += dx
+        self.pos_y += dy
         self.rect.x = round(self.pos_x)
         self.rect.y = round(self.pos_y)
         self.hitbox.center = self.rect.center
-
-        # If creatures movement hits an obstance. Recalculate wander attr.
-        if obs_col:
-
-            # If obstacle is hit in the x axes change direction 180 degrees.
-            if (self.rect.left < obs_col.rect.left or self.rect.right > obs_col.rect.right):
-                self.wander_dx = -self.wander_dx
-                self.facing_right = self.wander_dx > 0
-
-            # If obstacle is hit in the y axes change direction 180 degrees.
-            if self.rect.top < obs_col.rect.top or self.rect.bottom > obs_col.rect.bottom:
-                self.wander_dy = -self.wander_dy
-
-            # Recalculate for wander for random time.
-            self.wander_elapsed  = 0.0
-            self.wander_duration = random.uniform(*self.wander_duration_range)
-
-        # If creatures movement hits a boundary or an obstance. Recalculate wander attr.
-        if bounds and not bounds.contains(self.rect):
-
-            # If bound is hit in the x axes change direction 180 degrees.
-            if (self.rect.left < bounds.left or self.rect.right > bounds.right):
-                self.wander_dx = -self.wander_dx
-                self.facing_right = self.wander_dx > 0
-
-            # If bound is hit in the y axes change direction 180 degrees.
-            if self.rect.top < bounds.top or self.rect.bottom > bounds.bottom:
-                self.wander_dy = -self.wander_dy
-
-            # Recalculate for wander for random time.
-            self.wander_elapsed  = 0.0
-            self.wander_duration = random.uniform(*self.wander_duration_range)
 
     # Called: Rat._update_state(), Snake._update_state().
     def _wander(self, dt, bounds = None):
@@ -154,8 +138,10 @@ class Creature(Entity):
                 self.wander_timer = 0.0
                 self.wander_interval = random.uniform(*self.wander_interval_range)
 
-                # Roll for chance to wander.
-                if random.random() < self.wander_chance:
+                # Roll for chance to wander or forced wander.
+                if (random.random() < self.wander_chance) or self.force_wander:
+
+                    self.force_wander = False
 
                     # Calculate random direction and random time to wander.
                     angle = random.uniform(0, 2 * math.pi)
@@ -163,6 +149,9 @@ class Creature(Entity):
                     self.wander_dy       = math.sin(angle)
                     self.wander_elapsed  = 0.0
                     self.wander_duration = random.uniform(*self.wander_duration_range)
+
+                    # Update facing direction.
+                    self._update_facing(self.wander_dx, self.wander_dy)
 
                     # Return start signal to enter wander state.
                     return "start"
@@ -174,14 +163,25 @@ class Creature(Entity):
 
         # Builds a future rect to where wander sends the creature.
         wander_target = self.rect.move(
-            round(self.wander_dx * self.stats.mspd),
-            round(self.wander_dy * self.stats.mspd)
-        )
+            round(self.wander_dx * self.stats.mspd), round(self.wander_dy * self.stats.mspd))
 
         # Try to move to that future spot.
         self._move_toward(dt, wander_target, self.stats.mspd, bounds)
-        # Change what creature is facing.
-        self.facing_right = self.wander_dx > 0
+
+        # If blocked while wandering pick a new direction immediately.
+        if self.force_wander:
+
+            self.force_wander = False
+
+            # Calculate random direction and random time to wander.
+            angle = random.uniform(0, 2 * math.pi)
+            self.wander_dx       = math.cos(angle)
+            self.wander_dy       = math.sin(angle)
+            self.wander_elapsed  = 0.0
+            self.wander_duration = random.uniform(*self.wander_duration_range)
+
+            # Update facing direction.
+            self._update_facing(self.wander_dx, self.wander_dy)
 
         # If wander timer hits.
         if self.wander_elapsed >= self.wander_duration:
@@ -231,7 +231,11 @@ class Creature(Entity):
 
                 # If more waypoints exist.
                 if self.path:
+                    # Update move_target.
                     self.move_target = pygame.Rect(self.path[0][0], self.path[0][1], 1, 1)
+                    # Update facing direction.
+                    self._update_facing(
+                        self.path[0][0] - self.rect.centerx, self.path[0][1] - self.rect.centery)
 
             # If no line of sight and no path.
             else:
@@ -251,33 +255,36 @@ class Creature(Entity):
             # If returns different coordinates from the current coordinates of the creature.
             if not ((coordinates[0] == self.rect.centerx) and (coordinates[1] == self.rect.centery)):
 
-                # New target to move to found.
+                # Update move_target.
                 self.move_target = pygame.Rect(coordinates[0], coordinates[1], 1, 1)
+                # Update facing direction.
+                self._update_facing(
+                    coordinates[0] - self.rect.centerx, coordinates[1] - self.rect.centery)
                 self.plan = None
 
-            # If the coordinates are the same
+            # If the coordinates are the same. Destination reached.
             else:
-
-                #  Time for collision handing.
-                self.plan = "collision handle"
+                self.plan = None
 
         # Creature moves to the nearest free space rect plan.
         elif( self.plan == "collision handle"):
 
             print("COLLISION HANDLE!")
             # Get the next coordinates to move.
-            coordinates = self.pathfinder.collision_handle(
-                (self.rect.centerx, self.rect.centery),
-                tile_radius = self.tile_radius)
+            coordinates = self.pathfinder.collision_handle((self.rect.centerx, self.rect.centery))
 
             # If returns none empty coordinates.
             if coordinates:
 
-                # New target to move to found.
+                # Update move_target.
                 self.move_target = pygame.Rect(coordinates[0], coordinates[1], 1, 1)
+                # Update facing direction.
+                self._update_facing(
+                    coordinates[0] - self.rect.centerx, coordinates[1] - self.rect.centery)
                 self.plan = None
 
-        # Creature calculates a path and moves to its first path waypoint.
+
+        # Creature calculates a path plan.
         elif( self.plan == "path finding"):
 
             # Block the player's tile — creatures should never path to it.
@@ -290,8 +297,8 @@ class Creature(Entity):
             # For all creatures.
             for n in self.neighbors:
 
-                # All creature possitions except self that are not dead or dying are added to the dynamic blocked set.
-                if n is not self and n.state not in ("dead", "dying"):
+                # All creature possitions except self and those that are not dead or dying are added to the dynamic blocked set.
+                if n is not self and n.state not in ("dying", "dead"):
                     r = int(n.rect.centerx / TILE_SIZE)
                     c = int(n.rect.centery / TILE_SIZE)
                     dynamic_blocked.add((r, c))
@@ -307,26 +314,25 @@ class Creature(Entity):
             if new_path:
 
                 self.path = new_path
+                # Update move_target.
                 self.move_target = pygame.Rect(self.path[0][0], self.path[0][1], 1, 1)
+                # Update facing direction.
+                self._update_facing(
+                    self.path[0][0] - self.rect.centerx, self.path[0][1] - self.rect.centery)
                 self.plan = None
 
-            # If not new path is found but has old.
-            elif self.path:
-
-                print("PATH FINDING FAILED. SETS OLD PATH!")
-                self.plan = None
-
-            # If no path at all!.
+            # If not new path is found.
             else:
 
-                print("PATH FINDING FAILED. NO PATH!")
+                print("PATH FINDING FAILED.")
                 self.plan = None
 
-        # Current plan failed so its changed. Do nothing for that frame.
+
+        # Current plan failed to set move_target. Plan is changed. Do nothing for that frame.
         if not self.move_target:
             return
 
-        # Check if path exists
+        # Check if path exists (meaning that the creature for some reason is following a path).
         if self.path:
            # Update the path timer.
             self.path_update_timer += dt
@@ -351,15 +357,13 @@ class Creature(Entity):
         new_y = self.pos_y + seek_y
 
         # After calculating new_x, new_y — add this before applying:
-        new_hitbox = self.hitbox.move(
-            round(new_x) - self.rect.x,
-            round(new_y) - self.rect.y
-        )
+        new_hitbox = self.hitbox.move(round(new_x) - self.rect.x, round(new_y) - self.rect.y)
 
-        # Check obstacle collisions
-        blocked = any(new_hitbox.colliderect(obs.hitbox) for obs in self.obstacles)
+        # Check obstacle collisions.
+        blocked = self._nearby_obstacle(new_hitbox) is not None
 
         if not blocked:
+
             self.stuck_counter = 0
             self.pos_x = new_x
             self.pos_y = new_y
@@ -367,53 +371,22 @@ class Creature(Entity):
             self.rect.y = round(self.pos_y)
             self.hitbox.center = self.rect.center
 
-            # Face the direction of movement accounting for camera rotation.
-            if abs(dx) > abs(dy):
-                rad = math.radians(self.camera_angle)
-                cos_a = math.cos(rad)
-                sin_a = math.sin(rad)
-                screen_dx = dx * cos_a - dy * sin_a
-                self.facing_right = screen_dx > 0
-
+        # We have obstacle collision.
         else:
 
-            # Try sliding along x axis only
-            new_hitbox_x = self.hitbox.move(round(new_x) - self.rect.x, 0)
-            blocked_x = (any(new_hitbox_x.colliderect(obs.hitbox) for obs in self.obstacles))
+            # Update counter.
+            self.stuck_counter += 1
 
-            # Try sliding along y axis only
-            new_hitbox_y = self.hitbox.move(0, round(new_y) - self.rect.y)
-            blocked_y = (any(new_hitbox_y.colliderect(obs.hitbox) for obs in self.obstacles))
+            # If stuck.
+            if self.stuck_counter > 10:
 
-            if not blocked_x:
-
-                self.stuck_counter = 0
-                self.pos_x = new_x
-                self.rect.x = round(self.pos_x)
-
-            if not blocked_y:
-
-                self.stuck_counter = 0
-                self.pos_y = new_y
-                self.rect.y = round(self.pos_y)
-
-            # Only count as stuck when both axes are blocked.
-            if blocked_x and blocked_y:
-
-                self.stuck_counter += 1
-
-                if self.stuck_counter > 30:
-
-                    print("STUCK COUNTER ALERT.")
-                    self.move_target            = None
-                    self.plan                   = "collision handle"
-                    self.path                   = []
-                    self.stuck_counter          = 0
-                    self.no_progress_counter    = 0
-                    self.path_update_timer      = random.uniform(0, 0.3)
-                    return
-
-            self.hitbox.center = self.rect.center
+                print("STUCK COUNTER ALERT.")
+                self.move_target            = None
+                self.plan                   = "collision handle"
+                self.path                   = []
+                self.stuck_counter          = 0
+                self.no_progress_counter    = 0
+                return
 
         # Progress check — catches sliding trap where creature moves
         # but makes no real progress toward its waypoint.
@@ -427,32 +400,22 @@ class Creature(Entity):
         self.last_pos_x = self.pos_x
         self.last_pos_y = self.pos_y
 
-        if self.no_progress_counter > 30:
+        if self.no_progress_counter > 10:
 
             print("NO PROGRESS COUNTER ALERT.")
-            self.move_target         = None
-            self.path                = []
-            self.stuck_counter       = 0
-            self.no_progress_counter = 0
-            self.path_update_timer   = random.uniform(0, 0.3)
-
-            dist_to_target = math.hypot(
-                self.target.rect.centerx - self.rect.centerx,
-                self.target.rect.centery - self.rect.centery)
-
-            # If close to player — escape first, then replan.
-            # If far from player — just replan directly.
-            if dist_to_target < TILE_SIZE * 4:
-                self.plan = "collision handle"
-
-            else:
-                self.plan = "path finding"
+            self.move_target            = None
+            self.plan                   = "collision handle"
+            self.path                   = []
+            self.stuck_counter          = 0
+            self.no_progress_counter    = 0
 
         # Soft push — only when physically overlapping another creature and creatures has no path.
         if not self.path:
             for n in self.neighbors:
+
                 if n is self or n.state in ("dead", "dying"):
                     continue
+
                 overlap_x = self.rect.centerx - n.rect.centerx
                 overlap_y = self.rect.centery - n.rect.centery
                 dist = math.hypot(overlap_x, overlap_y)
@@ -467,7 +430,8 @@ class Creature(Entity):
 
                     # Only push if it doesn't go into an obstacle.
                     push_hitbox = self.hitbox.move(round(push_x), round(push_y))
-                    if not any(push_hitbox.colliderect(obs.hitbox) for obs in self.obstacles):
+
+                    if self._nearby_obstacle(push_hitbox) is None:
                         self.pos_x += push_x
                         self.pos_y += push_y
                         self.rect.x = round(self.pos_x)
@@ -484,26 +448,34 @@ class Creature(Entity):
     def _snap_to_home(self):
 
         # Snap position to home.
-        self.pos_x         = float(self.home_position.x)
-        self.pos_y         = float(self.home_position.y)
-        self.rect.topleft  = self.home_position.topleft
-        self.hitbox.center = self.rect.center
-
-        # Clear movement state so no stale path carries over.
-        self.move_target = None
-        self.path        = []
-        self.plan        = None
-
-        self.wander_elapsed  = 0.0
-        self.wander_duration = 0.0
-        self.wander_dx       = 0.0
-        self.wander_dy       = 0.0
-        self.wander_timer    = 0.0
+        self.pos_x                  = float(self.home_position.x)
+        self.pos_y                  = float(self.home_position.y)
+        self.rect.topleft           = self.home_position.topleft
+        self.hitbox.center          = self.rect.center
 
         # If temp home then remove it.
         if self.temp_home:
             self.home_position = None
             self.temp_home = False
+
+        # Clear.
+        self.wander_timer           = 0.0
+        self.wander_duration        = 0.0
+        self.wander_elapsed         = 0.0
+        self.wander_dx              = 0.0
+        self.wander_dy              = 0.0
+        self.force_wander           = False
+
+        self.path                   = []
+        self.path_update_timer      = 0.0
+        self.line_of_sight          = False
+        self.los_lock_timer         = 0.0
+        self.plan                   = None
+        self.move_target            = None
+        self.stuck_counter          = 0
+        self.no_progress_counter    = 0
+        self.last_pos_x             = self.pos_x
+        self.last_pos_y             = self.pos_y
 
     # Called: Rat._update_state(), Snake._update_state()
     def _attack(self):
@@ -610,7 +582,33 @@ class Creature(Entity):
     # Called: Entity._regen()
     def _begin_death(self):
 
-        # clear players target if this creature was targeted
+        # If temp home then remove it.
+        if self.temp_home:
+            self.home_position = None
+            self.temp_home = False
+
+        self.out_of_energy          = True
+
+        # Clear.
+        self.wander_timer           = 0.0
+        self.wander_duration        = 0.0
+        self.wander_elapsed         = 0.0
+        self.wander_dx              = 0.0
+        self.wander_dy              = 0.0
+        self.force_wander           = False
+
+        self.path                   = []
+        self.move_target            = None
+        self.plan                   = None
+        self.path_update_timer      = 0.0
+        self.line_of_sight          = False
+        self.los_lock_timer         = 0.0
+        self.stuck_counter          = 0
+        self.no_progress_counter    = 0
+        self.last_pos_x             = self.pos_x
+        self.last_pos_y             = self.pos_y
+
+        # clear players target if this creature was targeted.
         if self.target.target is self:
             self.target.target = None
             self.target.target_dist = 0.0

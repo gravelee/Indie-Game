@@ -28,6 +28,8 @@ class DamageNumber:
         self._direction = 1 if index % 2 == 0 else -1
         self._drift_x   = 0.0
 
+        self.screen_offset_y = 0  # extra upward offset in screen space
+
         font         = self.get_font()
         self._surf   = font.render(self.text, True, color)
         self._w      = self._surf.get_width()
@@ -46,7 +48,7 @@ class DamageNumber:
 
         sx, sy = camera.world_to_screen(self.world_x, self.world_y, camera._player)
         screen_x = int(sx) - self._w // 2
-        screen_y = int(sy) - self._h // 2
+        screen_y = int(sy) - self._h // 2 - int(self.elapsed * DMG_RISE_SPEED) - 40
 
         outline_surf = self.get_font().render(self.text, True, (0, 0, 0))
         outline_surf.set_alpha(alpha)
@@ -63,8 +65,6 @@ class DamageNumber:
         if self.elapsed >= DMG_LIFETIME:
             self.alive = False
             return
-
-        self.world_y -= DMG_RISE_SPEED * dt
 
         half_period = 1.0 / (DMG_WOBBLE_FREQ * 2)
         wobble_phase = self.elapsed % (half_period * 2)
@@ -87,10 +87,11 @@ class DamageNumber:
 class UIManager:
 
     # Called: Indie_Game.__init__().
-    def __init__(self):
+    def __init__(self, camera):
 
-        self._numbers      = []     # active DamageNumber instances
-        self._spawn_count  = 0      # tracks index for alternating drift
+        self._numbers       = []     # active DamageNumber instances
+        self._spawn_count   = 0      # tracks index for alternating drift
+        self._camera        = camera
 
     # Called: spawn(), CombatFeedback.process_player(), CombatFeedback.process_entities().
     def _spawn_text(self, text, world_x, world_y, color):

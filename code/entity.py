@@ -48,6 +48,9 @@ class Entity(pygame.sprite.Sprite):
         self.exp_dropped        = False
         self.exp_reward         = 0
 
+        self.obs_hash           = None
+        self.obs_cell_size      = None
+
     # Called: Creature.__init__(), Player.__init__().
     def _load(self, filename, scale = SPRITE_SCALE):
 
@@ -56,6 +59,21 @@ class Entity(pygame.sprite.Sprite):
             frames = [pygame.transform.scale(f, (32 * scale, 32 * scale)) for f in frames]
         return frames
 
+# Called: Creature._move_toward(), Creature._move_smart(),
+#           Player._handle_movement(), Player.attack()
+    def _nearby_obstacle(self, hitbox):
+
+        if self.obs_hash is None or self.obs_cell_size is None:
+            return None
+
+        cell_x = hitbox.centerx // self.obs_cell_size
+        cell_y = hitbox.centery // self.obs_cell_size
+        for cx in range(cell_x - 1, cell_x + 2):
+            for cy in range(cell_y - 1, cell_y + 2):
+                for obs in self.obs_hash.get((cx, cy), set()):
+                    if hitbox.colliderect(obs.hitbox):
+                        return obs
+        return None
 
     # Called: Creature._update_state(), Creature._attack(), Creature._begin_death(),
     #           Player._update_state(), Player.attack(), Player._begin_death().

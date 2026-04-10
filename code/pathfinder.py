@@ -120,6 +120,18 @@ class Pathfinder:
             if dynamic_blocked and (r, c) in dynamic_blocked:
                 continue
 
+            # For diagonal moves, check both adjacent cardinal tiles are clear.
+            # This ensures the creature body fits through the gap.
+            if dr != 0 and dc != 0:
+                if not self.tilemap.is_walkable(row + dr, col):
+                    continue
+                if not self.tilemap.is_walkable(row, col + dc):
+                    continue
+                if self.tilemap.hitbox_blocked and self.tilemap.hitbox_blocked[row + dr][col]:
+                    continue
+                if self.tilemap.hitbox_blocked and self.tilemap.hitbox_blocked[row][col + dc]:
+                    continue
+
             result.append((r, c))
 
         return result
@@ -196,12 +208,12 @@ class Pathfinder:
         return []
 
     # Called: Creature._move_smart()
-    def collision_handle(self, start_world, tile_radius = 1):
+    def collision_handle(self, start_world):
 
         # Converts world coordinates to grid coordinates.
         start   = self._to_grid(start_world)
 
-        nearest = self._nearest_walkable(start, tile_radius)
+        nearest = self._nearest_walkable(start, tile_radius = 0)
 
         if nearest is None:
             return None

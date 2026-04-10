@@ -35,25 +35,24 @@ class Snake(Creature):
     # Called: Creature.update()
     def _update_state(self, dt, bounds = None):
 
-        # If player is dead or dying enter returning state.
-        if self.target.state in ("dying", "dead"):
-            if self.state in self.COMBAT_STATES:
-                self._set_state("returning")
-                return
-
-        # Calculate distance to the player and also direction if the player is close enough.
+        # Calculate distance to player.
         dist = self._distance_to(self.target.rect)
-        if dist < NOTICE_DIRECTION:
-            rad = math.radians(self.camera_angle)
-            cos_a = math.cos(rad)
-            sin_a = math.sin(rad)
-            dx = self.target.rect.centerx - self.rect.centerx
-            dy = self.target.rect.centery - self.rect.centery
-            screen_dx = dx * cos_a - dy * sin_a
-            self.facing_right = screen_dx > 0
 
         # If creature in idle neutral or wander state.
         if self.state in ("idle_neutral", "wander"):
+
+            # If player is not dying or is dead and within notice direction distance.
+            if self.target.state not in {"death","dead"} and dist < NOTICE_DIRECTION:
+
+                # Update facing direction.
+                self._update_facing(self.target.rect.centerx - self.rect.centerx,
+                    self.target.rect.centery - self.rect.centery)
+
+                if dist < NOTICE_DIST and self.notice_cooldown <= 0:
+                    # Creature enters notice state.
+                    self._set_state("notice")
+                    # Dont check wander.
+                    return
 
             # Take wander status.
             signal = self._wander(dt, bounds)
@@ -63,10 +62,6 @@ class Snake(Creature):
                 self._set_state("wander")
             elif signal == "done":
                 self._set_state("idle_neutral")
-
-            # If player is close enough and creatures notice cooldown is off then enter notice state.
-            if dist < NOTICE_DIST and self.notice_cooldown <= 0:
-                self._set_state("notice")
 
         # If creature in notice state.
         elif self.state == "notice":
@@ -106,8 +101,8 @@ class Snake(Creature):
         # If creature in idle attack state.
         elif self.state == "idle_attack":
 
-            # If creature runs out of energy it runs home.
-            if self.out_of_energy:
+            # If player is dying or dead or if creature runs out of energy it runs home.
+            if self.target.state in {"death","dead"} or self.out_of_energy:
                 self._set_state("returning")
             # If player is within attack range creature tries to attack.
             elif dist < ATTACK_DIST:
@@ -147,9 +142,6 @@ class Snake(Creature):
                 # If player is within notice distance creature enters enter stance state.
                 if dist < NOTICE_DIST:
                     self._set_state("enter_stance")
-                # If the creature does not have a home it enters idle neutral state.
-                elif self.home_position is None:
-                    self._set_state("idle_neutral")
                 # If creature does have a home it enters returning state.
                 else:
                     self._set_state("returning")
@@ -157,32 +149,37 @@ class Snake(Creature):
         # If creature in returning state (means it has a home).
         elif self.state == "returning":
 
-            # Calculate distance to home (home is either initial home or temporary home) and direction.
+            # Calculate distance to home (home is either initial home or temporary home).
             dist_home = self._distance_to(self.home_position)
 
-            # Returning = If creature is returning home and player enters creatures noticing range
-            # the creature will ignore him and will continue running toward home.
+            # Returning = True meaning:
+            # If creature is returning home and player enters creatures noticing range..
+            # ..the creature will ignore him and will continue running toward home.
             #
-            # If creature returning = true or returning = false but player is out of noticing range or home max distance is reached or creature runs out of energy.
-            if self.returning or (not self.returning and dist > NOTICE_DIST) or self.home_max_dist or self.out_of_energy:
+            # If creature returning = true or player is out of noticing range or home max distance is reached..
+            # ..or creature is out of energy or player is not alive then the creature is running to home position.
+            if self.returning or dist > NOTICE_DIST or self.home_max_dist or self.out_of_energy or self.target.state in {"death","dead"}:
 
-                # Creature moves towards home.
-                self._move_smart(dt, self.home_position, FLEE_SPEED, bounds)
-
-                # If creature is much close to its position snaps to home and enters idle neutra state.
+                # If creature is much close to its position snap to home and enter idle neutra state.
                 if dist_home <= HOME_DIST:
+
                     self._snap_to_home()
                     self._set_state("idle_neutral")
                     self.home_max_dist = False
                     self.notice_cooldown = NOTICE_COOLDOWN
                     self.out_of_energy = False
 
-            # If player is not alive creature is running to home position.
-            elif self.target.state == "dying" or self.target.state == "dead":
-                self._move_smart(dt, self.home_position, FLEE_SPEED, bounds)
+                else:
 
-            # Creature returing = false and player is within notice distance.
+                    # Creature moves towards home.
+                    self._move_smart(dt, self.home_position, FLEE_SPEED, bounds)
+
+            # Creature returing = false and player is alive and within notice distance and home max distance not reached and creature still has energy.
             else:
+
+                # Update facing direction.
+                self._update_facing(
+                    self.target.rect.centerx - self.rect.centerx, self.target.rect.centery - self.rect.centery)
 
                 # If player is within attack range creature enters idle attack state.
                 if dist < ATTACK_DIST:

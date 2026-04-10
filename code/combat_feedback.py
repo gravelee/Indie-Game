@@ -21,7 +21,7 @@ class CombatFeedback():
 
                 self.ui.spawn_from_result(
                     r, t.rect.centerx,
-                    t.rect.top - 20,
+                    t.rect.centery,
                     is_magic = r.get("is_magic", False)
                 )
 
@@ -29,7 +29,7 @@ class CombatFeedback():
                     self.ui._spawn_text(
                         f"{r["effect"].split("_")[-1].capitalize()}",
                         t.rect.centerx,
-                        t.rect.top - 35,
+                        t.rect.centery,
                         COLOR_EFFECT_TEXT
                     )
 
@@ -41,7 +41,7 @@ class CombatFeedback():
             self.ui.spawn_dot(
                 player.dot_damage,
                 player.rect.centerx,
-                player.rect.top - 20
+                player.rect.centery
             )
 
         # ── effect fade text on player ────────────────────────
@@ -49,7 +49,7 @@ class CombatFeedback():
             self.ui._spawn_text(
                 f"{name.split("_")[-1].capitalize()}",
                 player.rect.centerx,
-                player.rect.top - 30,
+                player.rect.centery,
                 COLOR_EFFECT_FADE
             )
 
@@ -67,7 +67,7 @@ class CombatFeedback():
                 self.ui.spawn_from_result(
                     r,
                     target_rect.centerx,
-                    target_rect.top - 20,
+                    target_rect.centery,
                     is_magic = r.get("is_magic", False)
                 )
 
@@ -75,7 +75,7 @@ class CombatFeedback():
                     self.ui._spawn_text(
                         f"{r["effect"].split("_")[-1].capitalize()}",
                         target_rect.centerx,
-                        target_rect.top - 35,
+                        target_rect.centery,
                         COLOR_EFFECT_TEXT
                     )
                 entity.last_hit = None
@@ -85,7 +85,7 @@ class CombatFeedback():
                 self.ui.spawn_exp(
                     entity.stats.exp_reward,
                     entity.rect.centerx,
-                    entity.rect.top - 20
+                    entity.rect.centery
                 )
                 entity.exp_dropped = True
 
@@ -94,7 +94,7 @@ class CombatFeedback():
                 self.ui.spawn_dot(
                     entity.dot_damage,
                     entity.rect.centerx,
-                    entity.rect.top - 20
+                    entity.rect.centery
                 )
 
             # ── effect fade text on creature ──────────────────
@@ -102,6 +102,6 @@ class CombatFeedback():
                 self.ui._spawn_text(
                     f"{name.split("_")[-1].capitalize()}",
                     entity.rect.centerx,
-                    entity.rect.top - 30,
+                    entity.rect.centery,
                     COLOR_EFFECT_FADE
                 )

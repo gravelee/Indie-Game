@@ -6,7 +6,7 @@ from rat import Rat
 from snake import Snake
 from stats import Stats
 from player  import Player
-from settings import TILE_SIZE, MAP_W, MAP_H
+from settings import MAP_W, MAP_H
 
 class Level:
 
@@ -35,12 +35,25 @@ class Level:
     # Called: __init__()
     def _load_assets(self):
 
-        # Loads assets: Ground tiles of the level.
-        ground_tile  = pygame.image.load("../assets/sprites/tile/grass.png").convert()
-        self.ground = pygame.transform.scale(ground_tile, (TILE_SIZE, TILE_SIZE))
+        # Load the full grass spritesheet.
+        sheet = pygame.image.load("../assets/sprites/tilemaps/leaf/leaf32.png").convert()
+
+        # Each tile is 16x16 in the sheet, scale to 32x32 for game.
+        SHEET_COLS = 24
+        SHEET_ROWS = 4
+        tile_w = sheet.get_width() // SHEET_COLS   # 32px
+        tile_h = sheet.get_height() // SHEET_ROWS  # 32px
+
+        # We import to tileset the whole grass tilemap and also transform it to fit to games tile size.
+        self.grass_tileset = []
+        for row in range(SHEET_ROWS):
+            for col in range(SHEET_COLS):
+                tile = sheet.subsurface(pygame.Rect(col * tile_w, row * tile_h, tile_w, tile_h))
+                self.grass_tileset.append(tile)
 
         # Give all to camera.
-        self.camera.ground = self.ground
+        self.camera.grass_tileset   = self.grass_tileset
+        self.camera.terrain_grid    = self.tilemap.terrain_grid
 
     # Called: __init__()
     def _spawn_entities(self):
@@ -70,10 +83,10 @@ class Level:
                 x, y = self.tilemap.to_world(row, col)
 
                 # All different tiles (types) ids (except player tile).
-                if tile in (2, 3):
+                if tile in (2, 3, 101):
 
                     # All creatures.
-                    if tile == 2:
+                    if tile in (2, 3):
 
                         cd = self.tilemap.get_creature_data(row, col)
 
@@ -90,39 +103,87 @@ class Level:
                         stats.gain_exp(cd["exp"])
                         home = pygame.Rect(x, y, 32, 32) if cd["home"] else None
 
-                        if cd["type"] == "rat":
-                            self.creature_list.append(
-                                Rat(x, y, stats, self.player, home, cd["returning"], cd["fleeing"],
-                                    *[self.camera, self.creatures]))
+                        # Rat creature.
+                        if tile == 2:
 
-                        elif cd["type"] == "snake":
-                            self.creature_list.append(
-                                Snake(x, y, stats, self.player, home, cd["returning"], cd["fleeing"],
-                                    *[self.camera, self.creatures]))
-                    # All obstacles
-                    elif tile == 3:
+                            #if cd["type"] == "rat":
+                                self.creature_list.append(
+                                    Rat(x, y, stats, self.player, home, cd["returning"], cd["fleeing"],
+                                        *[self.camera, self.creatures]))
+
+                        # Snake creature.
+                        elif tile == 3:
+
+                            #if cd["type"] == "snake":
+                                self.creature_list.append(
+                                    Snake(x, y, stats, self.player, home, cd["returning"], cd["fleeing"],
+                                        *[self.camera, self.creatures]))
+
+                    # Bush obstacle.
+                    elif tile == 101:
 
                         # Only obstacle in game right now is the bush.
                         self.obstacle_list.append(Bush(x, y, self.tilemap, *[self.camera, self.obstacles]))
 
         # Now that all creatures and obstacles are set.
-        # We give all creatures and obstacles to player.
-        self.player.enemies     = self.creature_list
-        self.player.obstacles   = self.obstacle_list
-        # We pass all obstacles to creatures.
-        for c in self.creature_list:
-            c.obstacles   = self.obstacle_list
-        # We pass all obstacles to tilemap.
-        self.tilemap.obstacles = self.obstacle_list
+        # We build the obstacle hash.
+        self._build_obstacle_hash()
 
-        # We pass pathfinder to all creatures and to all creatures all other creatures list
+        # We give all creatures, obstacles, obstacle hash and cell size to player.
+        self.player.enemies         = self.creature_list
+        self.player.obs_hash        = self._obs_hash
+        self.player.obs_cell_size   = self._obs_cell_size
+
+        # We pass all obstacles, obstacle hash and cell size to tilemap.
+        self.tilemap.obstacles      = self.obstacle_list
+        self.tilemap.obs_hash       = self._obs_hash
+        self.tilemap.obs_cell_size  = self._obs_cell_size
+
+        # We build the hitbox grind in tilemap.
+        self.tilemap.build_hitbox_grid(self.obstacle_list)
+
+        # We pass the remove from hash func to all obstacles.
+        for obs in self.obstacle_list:
+            obs.remove_from_hash = self._remove_from_obstacle_hash
+
+        # We pass pathfinder, neighbors, obstacle hash and cell size to all creatures.
         pathfinder = Pathfinder(self.tilemap)
         for c in self.creature_list:
             c.pathfinder    = pathfinder
             c.neighbors     = self.creature_list
+            c.obs_hash      = self._obs_hash
+            c.obs_cell_size = self._obs_cell_size
 
-        self.tilemap.build_hitbox_grid(self.obstacle_list, hitbox_inflate = -50)
 
+    # Called: _spawn_entities().
+    def _build_obstacle_hash(self, cell_size = 96):
+
+        self._obs_cell_size = cell_size
+        self._obs_hash = {}
+
+        for obs in self.obstacle_list:
+
+            cx = obs.hitbox.centerx // cell_size
+            cy = obs.hitbox.centery // cell_size
+
+            for dx in range(-1, 2):
+                for dy in range(-1, 2):
+
+                    key = (cx + dx, cy + dy)
+                    if key not in self._obs_hash:
+                        self._obs_hash[key] = set()
+                    self._obs_hash[key].add(obs)
+
+    # Called: Bush.take_hit().
+    def _remove_from_obstacle_hash(self, obs):
+
+        cx = obs.hitbox.centerx // self._obs_cell_size
+        cy = obs.hitbox.centery // self._obs_cell_size
+
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                key = (cx + dx, cy + dy)
+                self._obs_hash.get(key, set()).discard(obs)
 
     # Called: Indie_Game._update(), Indie_Game._draw()
     @property

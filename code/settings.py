@@ -34,7 +34,7 @@ NOTICE_DIRECTION    = 450
 NOTICE_DIST         = 400
 CHASE_DIST          = 900
 ATTACK_DIST         = 60
-HOME_DIST           = 12
+HOME_DIST           = 16
 FLEE_SPEED          = 200.0
 BASE_MOVEMENT_SPEED = 100
 # TILE_SIZE x SPRITE_SCALE <=> CREATURE_SIZE (ex. 32x32 tile x scale = 3 => creature size = 1, scale = 5 => size = 2)

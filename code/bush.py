@@ -63,8 +63,16 @@ class Bush(pygame.sprite.Sprite):
         if self.tilemap.obstacles is not None:
             self.tilemap.obstacles[:] = [o for o in self.tilemap.obstacles if o is not self]
 
-        # Updates the tilemap.
-        self.tilemap.update_tilemap(self.rect.centerx, self.rect.centery)
+        # Updates the obstacle hash.
+        if hasattr(self, 'remove_from_hash'):
+            self.remove_from_hash(self)
+
+        # Updates hitbox grid.
+        self.tilemap.update_hitbox_grid(self)
+
+        # Updates original grid.
+        self.tilemap.update_original_grid(self.rect.centerx, self.rect.centery)
+
 
     # Called: UIManager._draw_hp_bars()
     @property
