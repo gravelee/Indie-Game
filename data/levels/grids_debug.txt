@@ -1,102 +1,102 @@
 === ORIGINAL ===
-####################################################################################################
-#                                                                                                  #
-#          C              X         C                                                              #
-#                                                                                                  #
-#                     X X X                                                                        #
-#                                                                                                  #
-#                                                                                                  #
-#             X                                                                                    #
-#          C                                                                                       #
-#                            X X X X                                                               #
-#                     X                                                                            #
-#             X                                                                                    #
-#                            X                                                                     #
-#                                                                                                  #
-#       C                    X                                                                     #
-#                  X         X                                                                     #
-#                            X X X X   XXX                                                         #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                       XX                                                                         #
-#                       XX                                                                         #
-#                                                                                                  #
-#                                                                                                  #
-#                                    X                                                             #
-#                       XX XX  XX  X X X          X  X  X                                          #
-#                                   X X                    X                                       #
-#                                    X            X        X                                       #
-#                                                    X  X  X                                       #
-#                                               P                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#C                                                                                                 #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#   C                                                                                              #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#      C     C                                                                                     #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-#                                                                                                  #
-####################################################################################################
+                     X   X     X       X X   X X X X X X X X X X X X X X X X X X X X X              
+ X X X X X X X X X X   X   X X   X X X     X                                           X X X X X  X 
+                                             X X X X X X X X X X          X   X    X                
+ X X            X X               X X                           X           X            X    X X   
+      R                                                   X X X   X       X                       X 
+ X               X                                              X   X                       R   X   
+                                                      R     X X   X                                 
+ X                                                              X                               X X 
+                                       X                                                            
+ X X                             X  X                                                             X 
+                                                                                                    
+ X X X                                                     X                                    X X 
+                          X                                                            X            
+ X X X X X   X X                             X           X           X                          X X 
+                                          X    X  X               X                                 
+ X X                 X               X X            X                   X         X        X     X  
+                                 X X     X X X X  X            X                                    
+ X X                                 X X             X              X                 X          X  
+                                 X X           X X X            X            X                      
+X X                                     X            X       X                                   X  
+                X                                  X                                      X         
+ X          X X          X                            X                   X      X                X 
+          X    X X                                 X                                    X           
+ X  R       X            X                           X                                            X 
+           X X X                                                              X       X             
+ X                     X X       X      X      X    X              X               X              X 
+                                                                 X              X               X   
+ X                   X                             X               X X                            X 
+                                                               X X                             X    
+ X                 X X       P                    X          X     X X X                   X X   X X
+                                                X         X    X         X              X      X    
+ X X             X X     X       X            X              X                        X   X        X
+                                            X           X X               X         X   X   X       
+ X X X         X X                        X                                           X            X
+                                     X  X            X  X         X         X          X X X X      
+ X X         X X                                  X                                                X
+           X              X X       X  X              X                                      X X X  
+X X          X X        X     X X               X  X                                               X
+                 X   X            X  X X                                                        X   
+ X X           X       X        X              X X                                                X 
+                 X X X           X X X                                                          X   
+ X X X                                         X                                                   X
+                                                 X                                S              X  
+ X X                                          X         X                                          X
+                                                X                                               X   
+ X X X                                        X                                                    X
+              X   X   X          X   X           X               X                              X   
+ X X X                                         X                                                  X 
+                                                                             X                 X    
+X X X X        X        X     X        X        X X                                              X  
+                                                                          X                  X X   X
+X X X X X                  X                    X  X                                             X  
+                   X                                         X            X                 X X    X
+  X X X X X                        X     X       X  X                               X               
+                                                                           X                X X    X
+X X X   X             X       X                                                                     
+                                           X                         X      X                X     X
+X                                                                                  X       X        
+  X            X         X            X                                       X  X               X X
+X                X               X                                                        X         
+               X                                          X                     X                  X
+X                X X                        X     X                            X        X X         
+       X                                                                                         X X
+ X                 X X        X                   X                 X X       X        X X          
+                                       X                                X   X                      X
+X                  X X          X                 X X             X       X           X X           
+                                            X                 X X                                  X
+X X                   X           X                X X    X                           X             
+               X                                       X    X  X                        X        X X
+ X       S            X          X  X             X X    X    X                      X              
+                               X                      X    X                           X          X 
+X                     X      X    X  X      X     X X   X                                           
+  X                             X                     X                                 X          X
+X            X      X                    X          X                    X                          
+  X X             X                                                           X                    X
+X           X X                                                    X            X                   
+                X                                                                                 X 
+ X        X   X                                S              X                 X                   
+ X                       X                                                                     X X X
+          X X                   X        X                                    X X            X      
+ X X    X              X                X  X X X                                               X X X
+                                X     X          X                          X X X                   
+ X X  X              X            X X    X     X   X           X  X X X                  X     X X X
+                       X                         X                      X X  X   X                  
+ X X X                                             X                                    X  X     X X
+                         X                       X                          X   X                   
+  X X                      X                   X                                         X         X
+                             X           X      X                             X   X                 
+X X X                     X    X           X  X                                                    X
+                            X         X X    X                                                      
+ X X X                        X X         X                                                        X
+                                  X X X X   X                   X                              S    
+ X X X X                                  X              X                X     X                  X
+                                                                X       X   X X                     
+ X X X X X                                             X  X           X   X     X X                X
+                                                      X     X   X       X   X X X                   
+ X X X X X X X X                                         X          X X   X       X X X          X X
+                         X                           X     X  X X X     X   X X X                   
+ X X X X X X X X X X X X       X X X X           X X   X            X     X       X X X X X X X X  X
+                         X X X         X X X X X     X   X  X  X  X   X X   X X X                   
 

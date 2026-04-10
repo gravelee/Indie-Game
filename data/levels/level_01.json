@@ -2,54 +2,54 @@
 {
     "player": {
         "str": 1, "agi": 1, "sta": 10,
-        "int": 0, "spr": 0, "res": 0, "def": 1,
+        "int": 0, "spr": 0, "res": 0, "def": 10,
         "exp": 0
     },
     "creatures": [
     {
-        "row": 12, "col": 3, "type": "rat",
+        "row": 7, "col": 5, "type": "rat",
         "str": 1, "agi": 0, "sta": 6,
         "int": 0, "spr": 0, "res": 0, "def": 0,
         "exp": 0, "home": true, "returning": false, "fleeing": false
     },
     {
-        "row": 12, "col": 9, "type": "rat",
+        "row": 5, "col": 24, "type": "rat",
         "str": 0, "agi": 1, "sta": 5,
         "int": 0, "spr": 0, "res": 1, "def": 0,
         "exp": 0, "home": true, "returning": true, "fleeing": false
     },
     {
-        "row": 9, "col": 15, "type": "rat",
+        "row": 55, "col": 7, "type": "rat",
         "str": 0, "agi": 0, "sta": 6,
         "int": 0, "spr": 0, "res": 1, "def": 1,
         "exp": 0, "home": false, "returning": false, "fleeing": false
     },
     {
-        "row": 37, "col": 3, "type": "rat",
+        "row": 93, "col": 6, "type": "rat",
         "str": 1, "agi": 0, "sta": 5,
         "int": 0, "spr": 0, "res": 0, "def": 1,
         "exp": 0, "home": false, "returning": true, "fleeing": false
     },
     {
-        "row": 2, "col": 38, "type": "snake",
+        "row": 10, "col": 70, "type": "snake",
         "str": 3, "agi": 2, "sta": 7,
         "int": 0, "spr": 0, "res": 1, "def": 0,
         "exp": 0, "home": true, "returning": false, "fleeing": false
     },
     {
-        "row": 5, "col": 44, "type": "snake",
+        "row": 48, "col": 78, "type": "snake",
         "str": 2, "agi": 1, "sta": 6,
         "int": 0, "spr": 0, "res": 1, "def": 3,
         "exp": 0, "home": true, "returning": true, "fleeing": false
     },
     {
-        "row": 8, "col": 50, "type": "snake",
+        "row": 96, "col": 92, "type": "snake",
         "str": 3, "agi": 2, "sta": 8,
         "int": 0, "spr": 0, "res": 1, "def": 1,
         "exp": 0, "home": false, "returning": false, "fleeing": false
     },
     {
-        "row": 14, "col": 50, "type": "snake",
+        "row": 83, "col": 43, "type": "snake",
         "str": 2, "agi": 3, "sta": 7,
         "int": 0, "spr": 0, "res": 1, "def": 3,
         "exp": 0, "home": false, "returning": true, "fleeing": false
